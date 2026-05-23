@@ -1,0 +1,845 @@
+"""
+styles.py — CSS + componentes HTML custom para la app Streamlit.
+
+Toda la apariencia se inyecta vía st.markdown(..., unsafe_allow_html=True).
+Helper principal: inject_css() — llamalo una sola vez al inicio de app.py.
+Los demás helpers devuelven strings HTML que se pasan a st.markdown.
+"""
+
+import streamlit as st
+
+
+# ===================================================================
+# BLOQUE GRANDE DE CSS
+# ===================================================================
+CSS = r"""
+<style>
+/* ----- Google Fonts ----- */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --bg-primary:   #0F1923;
+  --bg-deeper:    #0A1018;
+  --bg-card:      #1A1A2E;
+  --bg-card-2:    #16213E;
+  --acc-green:    #00D4AA;
+  --acc-green-2:  #5EE8C7;
+  --acc-yellow:   #FFD700;
+  --acc-red:      #FF4655;
+  --text-1:       #FFFFFF;
+  --text-2:       #8A9BB0;
+  --text-3:       #5B6B7F;
+  --border:       rgba(255,255,255,0.08);
+  --border-2:     rgba(255,255,255,0.14);
+  --font-ui:      'Inter', system-ui, sans-serif;
+  --font-disp:    'Outfit', 'Inter', sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ===== Reset base de Streamlit ===== */
+html, body, .stApp {
+  background: var(--bg-primary) !important;
+  color: var(--text-1) !important;
+  font-family: var(--font-ui) !important;
+}
+.stApp { background: var(--bg-primary) !important; }
+.main .block-container {
+  max-width: 1280px;
+  padding-top: 1rem;
+  padding-bottom: 4rem;
+}
+/* Hide default Streamlit chrome */
+#MainMenu, header[data-testid="stHeader"], footer { visibility: hidden; height: 0; }
+
+/* ===== Sidebar ===== */
+[data-testid="stSidebar"] {
+  background: var(--bg-deeper) !important;
+  border-right: 1px solid var(--border);
+}
+[data-testid="stSidebar"] * { color: var(--text-1) !important; }
+[data-testid="stSidebar"] .stMarkdown h2,
+[data-testid="stSidebar"] .stMarkdown h3 {
+  font-family: var(--font-disp); letter-spacing: -0.01em;
+}
+
+/* ===== Tipografía global ===== */
+h1, h2, h3, h4 { font-family: var(--font-disp); letter-spacing: -0.02em; color: var(--text-1); }
+.main p, .main li, .main span, .main label { color: var(--text-1); }
+code, pre, .mono {
+  font-family: var(--font-mono) !important;
+  font-variant-numeric: tabular-nums;
+}
+code {
+  background: rgba(0,212,170,0.08) !important;
+  color: var(--acc-green-2) !important;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+/* ===== Tabs ===== */
+.stTabs [data-baseweb="tab-list"] {
+  gap: 4px;
+  background: transparent;
+  border-bottom: 1px solid var(--border);
+  padding: 0;
+}
+.stTabs [data-baseweb="tab"] {
+  background: transparent !important;
+  color: var(--text-2) !important;
+  border: none !important;
+  padding: 14px 22px !important;
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+  border-radius: 0 !important;
+  border-bottom: 2px solid transparent !important;
+  transition: color .2s, border-color .2s;
+}
+.stTabs [data-baseweb="tab"][aria-selected="true"] {
+  color: var(--acc-green) !important;
+  border-bottom-color: var(--acc-green) !important;
+}
+.stTabs [data-baseweb="tab"]:hover { color: var(--text-1) !important; }
+.stTabs [data-baseweb="tab-panel"] { padding-top: 30px; }
+
+/* ===== Buttons ===== */
+.stButton > button {
+  background: transparent !important;
+  color: var(--text-1) !important;
+  border: 1px solid var(--border-2) !important;
+  border-radius: 999px !important;
+  padding: 10px 22px !important;
+  font-family: var(--font-ui) !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  letter-spacing: 0.01em;
+  transition: all .2s ease !important;
+  box-shadow: none !important;
+}
+.stButton > button:hover {
+  border-color: var(--acc-green) !important;
+  color: var(--acc-green) !important;
+  background: rgba(0,212,170,0.05) !important;
+  transform: translateY(-1px);
+}
+.stButton > button:focus { outline: none !important; }
+
+/* ===== Sliders ===== */
+.stSlider label { color: var(--text-1) !important; font-weight: 500; font-size: 14px; }
+.stSlider [data-baseweb="slider"] > div { background: rgba(255,255,255,0.06) !important; }
+.stSlider [data-baseweb="slider"] [role="slider"] {
+  background: var(--text-1) !important;
+  border: 3px solid var(--acc-green) !important;
+  box-shadow: 0 4px 14px rgba(0,212,170,0.35) !important;
+  height: 22px !important; width: 22px !important;
+}
+.stSlider [data-baseweb="slider"] > div > div > div {
+  background: var(--acc-green) !important;
+}
+.stSlider [data-testid="stTickBar"] { color: var(--text-3) !important; font-family: var(--font-mono); font-size: 11px; }
+.stSlider [data-baseweb="slider"] [role="slider"] + div {
+  background: var(--bg-card-2) !important;
+  color: var(--acc-green) !important;
+  font-family: var(--font-mono) !important;
+  font-weight: 600 !important;
+}
+
+/* Yellow-themed slider */
+.slider-yellow .stSlider [data-baseweb="slider"] [role="slider"] {
+  border-color: var(--acc-yellow) !important;
+  box-shadow: 0 4px 14px rgba(255,215,0,0.35) !important;
+}
+.slider-yellow .stSlider [data-baseweb="slider"] > div > div > div {
+  background: var(--acc-yellow) !important;
+}
+
+/* ===== Selectbox / segmented / toggle ===== */
+.stSelectbox label, .stRadio label, .stCheckbox label { color: var(--text-1) !important; font-weight: 500; }
+.stSelectbox > div > div {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 10px !important;
+  color: var(--text-1) !important;
+}
+.stRadio [role="radiogroup"] { gap: 8px; }
+.stRadio [role="radiogroup"] label {
+  background: transparent !important;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 16px !important;
+  color: var(--text-2) !important;
+  cursor: pointer;
+  transition: all .2s;
+}
+.stRadio [role="radiogroup"] label[data-checked="true"],
+.stRadio [role="radiogroup"] label:has(input:checked) {
+  background: rgba(0,212,170,0.12) !important;
+  border-color: var(--acc-green);
+  color: var(--acc-green) !important;
+}
+
+/* ===== Metrics — used as KPI tiles ===== */
+[data-testid="stMetric"] {
+  background: var(--bg-card) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px;
+  padding: 20px 22px !important;
+  box-shadow: 0 20px 50px -30px rgba(0,0,0,0.6);
+}
+[data-testid="stMetricLabel"] {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-2) !important;
+}
+[data-testid="stMetricValue"] {
+  font-family: var(--font-disp) !important;
+  font-weight: 700 !important;
+  font-size: 36px !important;
+  letter-spacing: -0.02em;
+  color: var(--text-1) !important;
+}
+[data-testid="stMetricDelta"] {
+  font-family: var(--font-mono) !important;
+  font-size: 12px !important;
+  color: var(--acc-green) !important;
+}
+
+/* ===== Alerts ===== */
+.stAlert {
+  border-radius: 12px !important;
+  border: 1px solid var(--border) !important;
+  background: rgba(0,0,0,0.18) !important;
+  color: var(--text-1) !important;
+}
+.stAlert [data-testid="stMarkdownContainer"] p { color: var(--text-1) !important; }
+div[data-baseweb="notification"]:has(svg[data-icon="info"])    { border-color: rgba(0,212,170,0.30) !important; background: rgba(0,212,170,0.06) !important; }
+div[data-baseweb="notification"]:has(svg[data-icon="success"]) { border-color: rgba(0,212,170,0.45) !important; background: rgba(0,212,170,0.08) !important; }
+div[data-baseweb="notification"]:has(svg[data-icon="warning"]) { border-color: rgba(255,215,0,0.40) !important; background: rgba(255,215,0,0.07) !important; }
+div[data-baseweb="notification"]:has(svg[data-icon="error"])   { border-color: rgba(255,70,85,0.45) !important; background: rgba(255,70,85,0.07) !important; }
+
+/* ===== DataFrame ===== */
+[data-testid="stDataFrame"] {
+  background: var(--bg-card) !important;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  padding: 6px;
+}
+[data-testid="stDataFrame"] * { color: var(--text-1) !important; font-family: var(--font-mono) !important; }
+
+/* ===== Plotly chart container ===== */
+.js-plotly-plot, .plot-container, .stPlotlyChart {
+  background: transparent !important;
+}
+
+/* ===========================================================
+   COMPONENTES CUSTOM (HTML inyectado en st.markdown)
+   =========================================================== */
+
+/* ----- Hero ----- */
+.xg-hero {
+  position: relative;
+  padding: 64px 0 56px;
+  margin-bottom: 18px;
+  overflow: hidden;
+  isolation: isolate;
+  border-bottom: 1px solid var(--border);
+}
+.xg-hero__pitch {
+  position: absolute; inset: 0; z-index: -1;
+  width: 100%; height: 100%;
+  opacity: 0.45;
+}
+.xg-hero__pitch .pl { stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw 2.4s cubic-bezier(.5,.05,.25,1) forwards; }
+.xg-hero__pitch .pl:nth-child(2) { animation-delay: .1s; }
+.xg-hero__pitch .pl:nth-child(3) { animation-delay: .2s; }
+.xg-hero__pitch .pl:nth-child(4) { animation-delay: .3s; }
+.xg-hero__pitch .pl:nth-child(5) { animation-delay: .4s; }
+.xg-hero__pitch .pl:nth-child(6) { animation-delay: .5s; }
+.xg-hero__pitch .pl:nth-child(7) { animation-delay: .55s; }
+.xg-hero__pitch .pl:nth-child(8) { animation-delay: .6s; }
+.xg-hero__pitch .pl:nth-child(9) { animation-delay: .65s; }
+.xg-hero__pitch .pl:nth-child(10){ animation-delay: .7s; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+
+.xg-hero__tag {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.02);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  margin-bottom: 24px;
+}
+.xg-hero__tag i {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--acc-green);
+  box-shadow: 0 0 0 3px rgba(0,212,170,0.18);
+  animation: pulseDot 2s ease-in-out infinite;
+}
+@keyframes pulseDot {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(0,212,170,0.18); }
+  50%      { box-shadow: 0 0 0 6px rgba(0,212,170,0.05); }
+}
+.xg-hero__title {
+  font-family: var(--font-disp);
+  font-weight: 800;
+  font-size: clamp(40px, 6vw, 88px);
+  line-height: 0.96;
+  letter-spacing: -0.035em;
+  margin: 0 0 18px 0;
+  color: var(--text-1);
+  text-wrap: balance;
+}
+.xg-hero__title em {
+  font-style: italic; font-weight: 900;
+  background: linear-gradient(120deg, #00D4AA 0%, #5EE8C7 50%, #FFD700 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.xg-hero__sub {
+  font-size: 18px;
+  color: var(--text-2);
+  max-width: 620px;
+  margin: 0 0 28px 0;
+  line-height: 1.55;
+}
+.xg-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+  margin-top: 8px;
+}
+.xg-hero__stat { padding-right: 24px; border-right: 1px solid var(--border); }
+.xg-hero__stat:last-child { border-right: none; }
+.xg-hero__stat .v {
+  font-family: var(--font-disp);
+  font-weight: 700;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+.xg-hero__stat .v .suf {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-2);
+  font-weight: 500;
+  margin-left: 4px;
+}
+.xg-hero__stat .l {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-top: 8px;
+}
+@media (max-width: 720px) { .xg-hero__stats { grid-template-columns: repeat(2, 1fr); } }
+
+/* ----- Section heads ----- */
+.xg-shead { margin: 50px 0 28px; }
+.xg-shead .kk {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--acc-green);
+  margin-bottom: 10px;
+}
+.xg-shead .tt {
+  font-family: var(--font-disp);
+  font-weight: 700;
+  font-size: clamp(28px, 4vw, 48px);
+  letter-spacing: -0.025em;
+  margin: 0 0 10px 0;
+  line-height: 1.02;
+}
+.xg-shead .ll {
+  color: var(--text-2);
+  font-size: 16px;
+  max-width: 640px;
+  margin: 0;
+  line-height: 1.55;
+}
+
+/* ----- Step cards (explainer 4 cards) ----- */
+.xg-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin: 30px 0 10px;
+}
+@media (max-width: 980px) { .xg-steps { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .xg-steps { grid-template-columns: 1fr; } }
+.xg-step {
+  padding: 24px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  min-height: 240px;
+  display: flex; flex-direction: column;
+  transition: border-color .25s, transform .25s;
+}
+.xg-step:hover { border-color: var(--border-2); transform: translateY(-2px); }
+.xg-step .n {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-3);
+  letter-spacing: 0.1em;
+  margin-bottom: 14px;
+}
+.xg-step .ic { width: 44px; height: 44px; color: var(--acc-green); margin-bottom: 18px; }
+.xg-step .ic svg { width: 100%; height: 100%; }
+.xg-step h3 {
+  font-family: var(--font-disp);
+  font-weight: 600;
+  font-size: 19px;
+  margin: 0 0 8px;
+  letter-spacing: -0.015em;
+}
+.xg-step p { color: var(--text-2); font-size: 14px; margin: 0; line-height: 1.55; }
+.n-pulse { animation: nodePulse 1.6s ease-in-out infinite; }
+.n-pulse--d1 { animation-delay: .3s; } .n-pulse--d2 { animation-delay: .6s; }
+@keyframes nodePulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; filter: drop-shadow(0 0 6px currentColor); }
+}
+
+/* ----- Result hero (big probability number) ----- */
+.xg-result {
+  padding: 28px;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.22);
+  border: 1px solid var(--border);
+  margin-top: 8px;
+}
+.xg-result .lbl {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 8px;
+}
+.xg-result .num {
+  font-family: var(--font-disp);
+  font-weight: 800;
+  font-size: 72px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  margin: 6px 0 16px;
+}
+.xg-result .num .pct { font-size: 30px; color: var(--text-2); font-weight: 600; margin-left: 4px; }
+.xg-result.is-high { border-color: rgba(0,212,170,0.35); }
+.xg-result.is-high .num { color: var(--acc-green); }
+.xg-result.is-mid  { border-color: rgba(255,215,0,0.35); }
+.xg-result.is-mid  .num { color: var(--acc-yellow); }
+.xg-result.is-low  { border-color: rgba(255,70,85,0.35); }
+.xg-result.is-low  .num { color: var(--acc-red); }
+.xg-result .bar {
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+.xg-result .bar .fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--acc-red) 0%, var(--acc-yellow) 50%, var(--acc-green) 100%);
+  transition: width .35s cubic-bezier(.4,0,.2,1);
+}
+.xg-result .verdict {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px; color: var(--text-2);
+}
+.xg-result .verdict i {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block;
+}
+.xg-result.is-high .verdict i { background: var(--acc-green); box-shadow: 0 0 0 4px rgba(0,212,170,0.18); }
+.xg-result.is-mid  .verdict i { background: var(--acc-yellow); box-shadow: 0 0 0 4px rgba(255,215,0,0.18); }
+.xg-result.is-low  .verdict i { background: var(--acc-red); box-shadow: 0 0 0 4px rgba(255,70,85,0.18); }
+.xg-result.is-high.is-goal .num { animation: bump .35s ease; }
+@keyframes bump {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+/* ----- Glosario card ----- */
+.xg-glos {
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 12px;
+}
+.xg-glos .hd {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+  margin-bottom: 14px;
+}
+.xg-glos .name {
+  font-family: var(--font-disp);
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.015em;
+}
+.xg-glos .sym {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--acc-green);
+  letter-spacing: 0.05em;
+}
+.xg-glos .def { font-size: 15px; color: var(--text-1); margin: 0 0 12px; line-height: 1.55; }
+.xg-glos .formula {
+  padding: 10px 14px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--acc-green-2);
+  margin-bottom: 12px;
+}
+.xg-glos .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.xg-glos .row .cell {
+  padding: 10px 12px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.xg-glos .row .cell .h {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-2); margin-bottom: 4px;
+  display: flex; align-items: center; gap: 6px;
+}
+.xg-glos .row .cell .h .dot { width: 6px; height: 6px; border-radius: 50%; }
+.xg-glos .row .cell .h.lo .dot { background: var(--acc-red); }
+.xg-glos .row .cell .h.hi .dot { background: var(--acc-green); }
+.xg-glos .row .cell .b { font-size: 13px; color: var(--text-1); }
+.xg-glos .analogy {
+  border-left: 2px solid var(--acc-green);
+  padding: 4px 0 4px 12px;
+  font-style: italic;
+  color: var(--text-2);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.xg-glos .tip {
+  padding: 10px 14px;
+  background: rgba(0,212,170,0.06);
+  border: 1px solid rgba(0,212,170,0.2);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--text-1);
+}
+.xg-glos .tip strong { color: var(--acc-green); }
+
+/* ----- Referee scene ----- */
+.xg-ref {
+  position: relative;
+  height: 380px;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(255,215,0,0.04) 0%, transparent 60%);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+.xg-ref.is-yellow { background: radial-gradient(ellipse at center, rgba(255,215,0,0.16) 0%, transparent 65%); }
+.xg-ref svg.fig { height: 95%; filter: drop-shadow(0 8px 30px rgba(0,0,0,0.4)); }
+.xg-ref .arm { transform-origin: 130px 80px; transform: rotate(40deg); transition: transform .6s cubic-bezier(.5,1.6,.5,1); }
+.xg-ref.is-yellow .arm { transform: rotate(-50deg); }
+.xg-ref .card { opacity: 0; transition: opacity .3s ease .2s; }
+.xg-ref.is-yellow .card { opacity: 1; animation: cardBounce .6s ease .1s; }
+@keyframes cardBounce {
+  0%   { transform: scale(.7); }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+.xg-ref .chip {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy)));
+  background: var(--bg-card-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px;
+  animation: chipFloat 4s ease-in-out infinite;
+  box-shadow: 0 8px 24px -10px rgba(0,0,0,0.5);
+  z-index: 2;
+}
+.xg-ref .chip .k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--text-2); }
+.xg-ref .chip .v { color: var(--text-1); font-weight: 600; font-family: var(--font-mono); }
+@keyframes chipFloat {
+  0%, 100% { transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy))); }
+  50%      { transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy) - 8px)); }
+}
+
+/* ----- Footer ----- */
+.xg-foot {
+  border-top: 1px solid var(--border);
+  padding: 36px 0 12px;
+  margin-top: 50px;
+  display: flex; flex-wrap: wrap;
+  gap: 40px;
+  justify-content: space-between;
+  color: var(--text-2);
+  font-size: 13px;
+}
+.xg-foot .brand { display: flex; align-items: center; gap: 10px; }
+.xg-foot .brand .dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--acc-green);
+  box-shadow: 0 0 0 4px rgba(0,212,170,0.18), 0 0 20px var(--acc-green);
+}
+.xg-foot .brand b { color: var(--text-1); font-family: var(--font-disp); font-weight: 800; letter-spacing: -0.01em; }
+
+/* ----- Misc ----- */
+hr { border: none !important; border-top: 1px solid var(--border) !important; margin: 30px 0 !important; }
+.stMarkdown a { color: var(--acc-green); }
+</style>
+"""
+
+
+def inject_css() -> None:
+    """Inyecta el bloque global de CSS. Llamar una vez al inicio de app.py."""
+    st.markdown(CSS, unsafe_allow_html=True)
+
+
+# ===================================================================
+# COMPONENTES HTML
+# ===================================================================
+
+def hero(n_tiros: int, target_acc: int = 78) -> str:
+    """Hero principal — título grande, subtítulo, cancha blueprint detrás, stats."""
+    return f"""
+<div class="xg-hero">
+  <svg class="xg-hero__pitch" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <g fill="none" stroke="#00D4AA" stroke-width="1.4" stroke-opacity="0.5">
+      <rect class="pl" x="80" y="80" width="1440" height="740" pathLength="100"/>
+      <line class="pl" x1="800" y1="80" x2="800" y2="820" pathLength="100"/>
+      <circle class="pl" cx="800" cy="450" r="110" pathLength="100"/>
+      <rect class="pl" x="80" y="225" width="220" height="450" pathLength="100"/>
+      <rect class="pl" x="80" y="335" width="80" height="230" pathLength="100"/>
+      <rect class="pl" x="1300" y="225" width="220" height="450" pathLength="100"/>
+      <rect class="pl" x="1440" y="335" width="80" height="230" pathLength="100"/>
+      <path class="pl" d="M 300 360 A 80 80 0 0 1 300 540" pathLength="100"/>
+      <path class="pl" d="M 1300 360 A 80 80 0 0 0 1300 540" pathLength="100"/>
+      <circle class="pl" cx="245" cy="450" r="3" fill="#00D4AA" pathLength="100"/>
+    </g>
+  </svg>
+  <div class="xg-hero__tag"><i></i><span>Red neuronal entrenada en vivo</span></div>
+  <h1 class="xg-hero__title">¿Puede la IA<br/><em>entender</em> el fútbol?</h1>
+  <p class="xg-hero__sub">
+    Una red neuronal mira miles de tiros y aprende, sola, qué hace que una pelota
+    termine en el fondo del arco. Sin reglas. Sin fórmulas. Solo patrones.
+  </p>
+  <div class="xg-hero__stats">
+    <div class="xg-hero__stat">
+      <div class="v">{n_tiros}</div>
+      <div class="l">tiros analizados</div>
+    </div>
+    <div class="xg-hero__stat">
+      <div class="v">2<span class="suf">capas</span></div>
+      <div class="l">ocultas tanh</div>
+    </div>
+    <div class="xg-hero__stat">
+      <div class="v">{target_acc}<span class="suf">%</span></div>
+      <div class="l">accuracy objetivo</div>
+    </div>
+    <div class="xg-hero__stat">
+      <div class="v">0<span class="suf">deps ML</span></div>
+      <div class="l">sin TF · sin sklearn</div>
+    </div>
+  </div>
+</div>
+"""
+
+
+def section_head(kicker: str, title: str, lead: str = "") -> str:
+    """Encabezado de sección con kicker monoespaciado + título display."""
+    return f"""
+<div class="xg-shead">
+  <div class="kk">{kicker}</div>
+  <h2 class="tt">{title}</h2>
+  {('<p class="ll">' + lead + '</p>') if lead else ''}
+</div>
+"""
+
+
+def steps_explainer() -> str:
+    icon1 = """<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6">
+      <rect x="6" y="14" width="22" height="6" rx="1"/>
+      <rect x="6" y="26" width="34" height="6" rx="1"/>
+      <rect x="6" y="38" width="18" height="6" rx="1"/>
+      <path d="M44 17h14M44 29h14M44 41h14" stroke-dasharray="2 3"/>
+      <circle cx="58" cy="17" r="2.5" fill="currentColor" stroke="none"/>
+      <circle cx="58" cy="29" r="2.5" fill="currentColor" stroke="none"/>
+      <circle cx="58" cy="41" r="2.5" fill="currentColor" stroke="none"/>
+    </svg>"""
+    icon2 = """<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.4">
+      <g stroke-opacity="0.5">
+        <line x1="10" y1="20" x2="32" y2="14"/>
+        <line x1="10" y1="20" x2="32" y2="32"/>
+        <line x1="10" y1="20" x2="32" y2="50"/>
+        <line x1="10" y1="44" x2="32" y2="14"/>
+        <line x1="10" y1="44" x2="32" y2="32"/>
+        <line x1="10" y1="44" x2="32" y2="50"/>
+        <line x1="32" y1="14" x2="54" y2="32"/>
+        <line x1="32" y1="32" x2="54" y2="32"/>
+        <line x1="32" y1="50" x2="54" y2="32"/>
+      </g>
+      <circle cx="10" cy="20" r="3.5" fill="currentColor"/>
+      <circle cx="10" cy="44" r="3.5" fill="currentColor"/>
+      <circle cx="32" cy="14" r="4" class="n-pulse" fill="currentColor"/>
+      <circle cx="32" cy="32" r="4" class="n-pulse n-pulse--d1" fill="currentColor"/>
+      <circle cx="32" cy="50" r="4" class="n-pulse n-pulse--d2" fill="currentColor"/>
+      <circle cx="54" cy="32" r="4.5" fill="currentColor"/>
+    </svg>"""
+    icon3 = """<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6">
+      <circle cx="32" cy="32" r="20"/>
+      <path d="M32 12v20l12 8" stroke-linecap="round"/>
+    </svg>"""
+    icon4 = """<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6">
+      <path d="M14 32a18 18 0 1 1 6 13.5" stroke-linecap="round"/>
+      <path d="M14 32V20M14 32h12" stroke-linecap="round"/>
+    </svg>"""
+    return f"""
+<div class="xg-steps">
+  <div class="xg-step"><div class="n">01</div><div class="ic">{icon1}</div>
+    <h3>Le damos datos</h3>
+    <p>Para cada tiro, dos números: <code>distancia al arco</code> y <code>ángulo</code>. Nada más.</p></div>
+  <div class="xg-step"><div class="n">02</div><div class="ic">{icon2}</div>
+    <h3>La red piensa</h3>
+    <p>Decenas de mini-decisiones (neuronas) combinan esos números. Cada conexión tiene un <code>peso</code> que dice cuánto importa.</p></div>
+  <div class="xg-step"><div class="n">03</div><div class="ic">{icon3}</div>
+    <h3>Da una respuesta</h3>
+    <p>Un número entre 0 y 1. <code>0.73</code> = "73% de probabilidad de gol". Eso es xG.</p></div>
+  <div class="xg-step"><div class="n">04</div><div class="ic">{icon4}</div>
+    <h3>Aprende del error</h3>
+    <p>Si se equivocó, retropropaga el error y ajusta los pesos. <em>Backpropagation</em>: culpa repartida hacia atrás.</p></div>
+</div>
+"""
+
+
+def result_box(proba: float, verdict_high: str = "⚽ Chance clara",
+               verdict_mid: str = "Chance moderada",
+               verdict_low: str = "🔴 Muy difícil",
+               label: str = "Probabilidad de gol") -> str:
+    """
+    Caja grande con porcentaje + barra de color + verdict.
+    Cambia color/clase según tier (low <20%, mid 20-50%, high >=50%).
+    """
+    pct = int(round(proba * 100))
+    if proba >= 0.5:
+        tier = "is-high"
+        verdict = verdict_high
+        goal_class = "is-goal" if proba > 0.7 else ""
+    elif proba >= 0.2:
+        tier = "is-mid"
+        verdict = verdict_mid
+        goal_class = ""
+    else:
+        tier = "is-low"
+        verdict = verdict_low
+        goal_class = ""
+    return f"""
+<div class="xg-result {tier} {goal_class}">
+  <div class="lbl">{label}</div>
+  <div class="num">{pct}<span class="pct">%</span></div>
+  <div class="bar"><div class="fill" style="width:{max(2,pct)}%"></div></div>
+  <div class="verdict"><i></i><span>{verdict}</span></div>
+</div>
+"""
+
+
+def referee_scene(vel: int, ball: bool, zona: str, minuto: int, score: int,
+                  is_yellow: bool) -> str:
+    """Escena del árbitro con chips flotantes + figura geométrica."""
+    yellow_cls = "is-yellow" if is_yellow else ""
+    ball_txt = "Sí" if ball else "No"
+    zona_txt = zona.capitalize()
+    score_txt = f"+{score}" if score > 0 else f"{score}"
+    return f"""
+<div class="xg-ref {yellow_cls}">
+  <div class="chip" style="--ox:-220px; --oy:-100px;">
+    <span class="k">VEL</span><span class="v">{vel}</span>
+  </div>
+  <div class="chip" style="--ox:200px; --oy:-120px;">
+    <span class="k">PELOTA</span><span class="v">{ball_txt}</span>
+  </div>
+  <div class="chip" style="--ox:-240px; --oy:80px;">
+    <span class="k">ZONA</span><span class="v">{zona_txt}</span>
+  </div>
+  <div class="chip" style="--ox:220px; --oy:100px;">
+    <span class="k">MIN</span><span class="v">{minuto}'</span>
+  </div>
+  <div class="chip" style="--ox:0px; --oy:-160px;">
+    <span class="k">MARCADOR</span><span class="v">{score_txt}</span>
+  </div>
+  <svg class="fig" viewBox="0 0 200 280">
+    <circle cx="100" cy="42" r="20" fill="none" stroke="#fff" stroke-width="1.6"/>
+    <path d="M 70 70 L 130 70 L 138 180 L 62 180 Z" fill="none" stroke="#fff" stroke-width="1.6"/>
+    <line x1="64" y1="140" x2="136" y2="140" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 3"/>
+    <rect x="105" y="100" width="14" height="20" fill="none" stroke="#FFD700" stroke-width="1.4" stroke-opacity="0.6"/>
+    <line x1="80" y1="180" x2="76" y2="260" stroke="#fff" stroke-width="1.6"/>
+    <line x1="120" y1="180" x2="124" y2="260" stroke="#fff" stroke-width="1.6"/>
+    <line x1="70" y1="80" x2="40" y2="130" stroke="#fff" stroke-width="1.6"/>
+    <g class="arm">
+      <line x1="130" y1="80" x2="160" y2="130" stroke="#fff" stroke-width="1.6"/>
+      <g class="card" style="transform-origin:160px 130px;">
+        <rect x="152" y="108" width="18" height="26" rx="1.5" fill="#FFD700" stroke="#fff" stroke-width="1"/>
+      </g>
+    </g>
+  </svg>
+</div>
+"""
+
+
+def glosario_card(name: str, sym: str, definicion: str, formula: str,
+                  bajo: str, alto: str, analogia: str, tip: str) -> str:
+    return f"""
+<div class="xg-glos">
+  <div class="hd">
+    <span class="name">{name}</span>
+    <span class="sym">{sym}</span>
+  </div>
+  <p class="def">{definicion}</p>
+  <div class="formula">{formula}</div>
+  <div class="row">
+    <div class="cell"><div class="h lo"><span class="dot"></span>Valor bajo</div><div class="b">{bajo}</div></div>
+    <div class="cell"><div class="h hi"><span class="dot"></span>Valor alto</div><div class="b">{alto}</div></div>
+  </div>
+  <div class="analogy">{analogia}</div>
+  <div class="tip"><strong>Tip:</strong> {tip}</div>
+</div>
+"""
+
+
+def footer() -> str:
+    return """
+<div class="xg-foot">
+  <div>
+    <div class="brand"><span class="dot"></span><b>xG/Lab</b></div>
+    <p style="margin:10px 0 0; max-width: 380px;">
+      Implementado con <strong style="color:#fff">NumPy puro</strong> — sin TensorFlow ni scikit-learn.<br/>
+      Stack: Streamlit ≥ 1.30 · Python ≥ 3.10 · Plotly · Pandas.
+    </p>
+  </div>
+  <div>
+    <div style="font-family:var(--font-mono); font-size:11px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-2); margin-bottom:10px;">TP Integrador</div>
+    <div>Introducción a las Redes Neuronales</div>
+    <div>Opción B — MLP con backpropagation · 2026</div>
+  </div>
+</div>
+"""

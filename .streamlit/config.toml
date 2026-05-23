@@ -1,0 +1,18 @@
+# ===========================================================
+# xG/Lab — tema oscuro para Streamlit
+# Paleta: fondo #0F1923, cards #1A1A2E, acento verde #00D4AA
+# ===========================================================
+[theme]
+base = "dark"
+primaryColor = "#00D4AA"
+backgroundColor = "#0F1923"
+secondaryBackgroundColor = "#1A1A2E"
+textColor = "#FFFFFF"
+font = "sans serif"
+
+[server]
+headless = false
+runOnSave = true
+
+[browser]
+gatherUsageStats = false
