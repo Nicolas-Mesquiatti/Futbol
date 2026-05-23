@@ -1,20 +1,12 @@
 """
 styles.py — CSS + componentes HTML custom para la app Streamlit.
-
-Toda la apariencia se inyecta vía st.markdown(..., unsafe_allow_html=True).
-Helper principal: inject_css() — llamalo una sola vez al inicio de app.py.
-Los demás helpers devuelven strings HTML que se pasan a st.markdown.
 """
 
 import streamlit as st
 
 
-# ===================================================================
-# BLOQUE GRANDE DE CSS
-# ===================================================================
 CSS = r"""
 <style>
-/* ----- Google Fonts ----- */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
@@ -36,7 +28,6 @@ CSS = r"""
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
 }
 
-/* ===== Reset base de Streamlit ===== */
 html, body, .stApp {
   background: var(--bg-primary) !important;
   color: var(--text-1) !important;
@@ -48,52 +39,33 @@ html, body, .stApp {
   padding-top: 1rem;
   padding-bottom: 4rem;
 }
-/* Hide default Streamlit chrome */
 #MainMenu, header[data-testid="stHeader"], footer { visibility: hidden; height: 0; }
 
-/* ===== Sidebar ===== */
 [data-testid="stSidebar"] {
   background: var(--bg-deeper) !important;
   border-right: 1px solid var(--border);
 }
 [data-testid="stSidebar"] * { color: var(--text-1) !important; }
-[data-testid="stSidebar"] .stMarkdown h2,
-[data-testid="stSidebar"] .stMarkdown h3 {
-  font-family: var(--font-disp); letter-spacing: -0.01em;
-}
 
-/* ===== Tipografía global ===== */
 h1, h2, h3, h4 { font-family: var(--font-disp); letter-spacing: -0.02em; color: var(--text-1); }
 .main p, .main li, .main span, .main label { color: var(--text-1); }
-code, pre, .mono {
-  font-family: var(--font-mono) !important;
-  font-variant-numeric: tabular-nums;
-}
+code, pre, .mono { font-family: var(--font-mono) !important; font-variant-numeric: tabular-nums; }
 code {
   background: rgba(0,212,170,0.08) !important;
   color: var(--acc-green-2) !important;
-  padding: 1px 6px;
-  border-radius: 4px;
+  padding: 1px 6px; border-radius: 4px;
 }
 
 /* ===== Tabs ===== */
 .stTabs [data-baseweb="tab-list"] {
-  gap: 4px;
-  background: transparent;
-  border-bottom: 1px solid var(--border);
-  padding: 0;
+  gap: 4px; background: transparent;
+  border-bottom: 1px solid var(--border); padding: 0;
 }
 .stTabs [data-baseweb="tab"] {
-  background: transparent !important;
-  color: var(--text-2) !important;
-  border: none !important;
-  padding: 14px 22px !important;
-  font-family: var(--font-ui);
-  font-weight: 500;
-  font-size: 14px;
-  letter-spacing: 0.01em;
-  border-radius: 0 !important;
-  border-bottom: 2px solid transparent !important;
+  background: transparent !important; color: var(--text-2) !important;
+  border: none !important; padding: 14px 22px !important;
+  font-family: var(--font-ui); font-weight: 500; font-size: 14px;
+  border-radius: 0 !important; border-bottom: 2px solid transparent !important;
   transition: color .2s, border-color .2s;
 }
 .stTabs [data-baseweb="tab"][aria-selected="true"] {
@@ -105,23 +77,15 @@ code {
 
 /* ===== Buttons ===== */
 .stButton > button {
-  background: transparent !important;
-  color: var(--text-1) !important;
-  border: 1px solid var(--border-2) !important;
-  border-radius: 999px !important;
-  padding: 10px 22px !important;
-  font-family: var(--font-ui) !important;
-  font-weight: 600 !important;
-  font-size: 14px !important;
-  letter-spacing: 0.01em;
-  transition: all .2s ease !important;
-  box-shadow: none !important;
+  background: transparent !important; color: var(--text-1) !important;
+  border: 1px solid var(--border-2) !important; border-radius: 999px !important;
+  padding: 10px 22px !important; font-family: var(--font-ui) !important;
+  font-weight: 600 !important; font-size: 14px !important;
+  transition: all .2s ease !important; box-shadow: none !important;
 }
 .stButton > button:hover {
-  border-color: var(--acc-green) !important;
-  color: var(--acc-green) !important;
-  background: rgba(0,212,170,0.05) !important;
-  transform: translateY(-1px);
+  border-color: var(--acc-green) !important; color: var(--acc-green) !important;
+  background: rgba(0,212,170,0.05) !important; transform: translateY(-1px);
 }
 .stButton > button:focus { outline: none !important; }
 
@@ -129,119 +93,81 @@ code {
 .stSlider label { color: var(--text-1) !important; font-weight: 500; font-size: 14px; }
 .stSlider [data-baseweb="slider"] > div { background: rgba(255,255,255,0.06) !important; }
 .stSlider [data-baseweb="slider"] [role="slider"] {
-  background: var(--text-1) !important;
-  border: 3px solid var(--acc-green) !important;
+  background: var(--text-1) !important; border: 3px solid var(--acc-green) !important;
   box-shadow: 0 4px 14px rgba(0,212,170,0.35) !important;
   height: 22px !important; width: 22px !important;
 }
-.stSlider [data-baseweb="slider"] > div > div > div {
-  background: var(--acc-green) !important;
-}
+.stSlider [data-baseweb="slider"] > div > div > div { background: var(--acc-green) !important; }
 .stSlider [data-testid="stTickBar"] { color: var(--text-3) !important; font-family: var(--font-mono); font-size: 11px; }
 .stSlider [data-baseweb="slider"] [role="slider"] + div {
-  background: var(--bg-card-2) !important;
-  color: var(--acc-green) !important;
-  font-family: var(--font-mono) !important;
-  font-weight: 600 !important;
+  background: var(--bg-card-2) !important; color: var(--acc-green) !important;
+  font-family: var(--font-mono) !important; font-weight: 600 !important;
 }
 
-/* Yellow-themed slider */
-.slider-yellow .stSlider [data-baseweb="slider"] [role="slider"] {
-  border-color: var(--acc-yellow) !important;
-  box-shadow: 0 4px 14px rgba(255,215,0,0.35) !important;
-}
-.slider-yellow .stSlider [data-baseweb="slider"] > div > div > div {
-  background: var(--acc-yellow) !important;
-}
-
-/* ===== Selectbox / segmented / toggle ===== */
+/* ===== Radio ===== */
 .stSelectbox label, .stRadio label, .stCheckbox label { color: var(--text-1) !important; font-weight: 500; }
 .stSelectbox > div > div {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 10px !important;
-  color: var(--text-1) !important;
+  background: var(--bg-card) !important; border: 1px solid var(--border) !important;
+  border-radius: 10px !important; color: var(--text-1) !important;
 }
 .stRadio [role="radiogroup"] { gap: 8px; }
 .stRadio [role="radiogroup"] label {
-  background: transparent !important;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 8px 16px !important;
-  color: var(--text-2) !important;
-  cursor: pointer;
-  transition: all .2s;
+  background: transparent !important; border: 1px solid var(--border);
+  border-radius: 999px; padding: 8px 16px !important;
+  color: var(--text-2) !important; cursor: pointer; transition: all .2s;
 }
 .stRadio [role="radiogroup"] label[data-checked="true"],
 .stRadio [role="radiogroup"] label:has(input:checked) {
   background: rgba(0,212,170,0.12) !important;
-  border-color: var(--acc-green);
-  color: var(--acc-green) !important;
+  border-color: var(--acc-green); color: var(--acc-green) !important;
 }
 
-/* ===== Metrics — used as KPI tiles ===== */
+/* ===== Metrics ===== */
 [data-testid="stMetric"] {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 16px;
-  padding: 20px 22px !important;
+  background: var(--bg-card) !important; border: 1px solid var(--border) !important;
+  border-radius: 16px; padding: 20px 22px !important;
   box-shadow: 0 20px 50px -30px rgba(0,0,0,0.6);
 }
 [data-testid="stMetricLabel"] {
-  font-family: var(--font-mono) !important;
-  font-size: 11px !important;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--text-2) !important;
+  font-family: var(--font-mono) !important; font-size: 11px !important;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-2) !important;
 }
 [data-testid="stMetricValue"] {
-  font-family: var(--font-disp) !important;
-  font-weight: 700 !important;
-  font-size: 36px !important;
-  letter-spacing: -0.02em;
-  color: var(--text-1) !important;
+  font-family: var(--font-disp) !important; font-weight: 700 !important;
+  font-size: 36px !important; letter-spacing: -0.02em; color: var(--text-1) !important;
 }
 [data-testid="stMetricDelta"] {
-  font-family: var(--font-mono) !important;
-  font-size: 12px !important;
+  font-family: var(--font-mono) !important; font-size: 12px !important;
   color: var(--acc-green) !important;
 }
 
 /* ===== Alerts ===== */
 .stAlert {
-  border-radius: 12px !important;
-  border: 1px solid var(--border) !important;
-  background: rgba(0,0,0,0.18) !important;
-  color: var(--text-1) !important;
+  border-radius: 12px !important; border: 1px solid var(--border) !important;
+  background: rgba(0,0,0,0.18) !important; color: var(--text-1) !important;
 }
 .stAlert [data-testid="stMarkdownContainer"] p { color: var(--text-1) !important; }
-div[data-baseweb="notification"]:has(svg[data-icon="info"])    { border-color: rgba(0,212,170,0.30) !important; background: rgba(0,212,170,0.06) !important; }
-div[data-baseweb="notification"]:has(svg[data-icon="success"]) { border-color: rgba(0,212,170,0.45) !important; background: rgba(0,212,170,0.08) !important; }
-div[data-baseweb="notification"]:has(svg[data-icon="warning"]) { border-color: rgba(255,215,0,0.40) !important; background: rgba(255,215,0,0.07) !important; }
-div[data-baseweb="notification"]:has(svg[data-icon="error"])   { border-color: rgba(255,70,85,0.45) !important; background: rgba(255,70,85,0.07) !important; }
+
+/* ===== Progress bar ===== */
+.stProgress > div > div > div > div { background: var(--acc-green) !important; }
+.stProgress > div > div > div { background: rgba(255,255,255,0.06) !important; border-radius: 999px !important; }
 
 /* ===== DataFrame ===== */
 [data-testid="stDataFrame"] {
-  background: var(--bg-card) !important;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  padding: 6px;
+  background: var(--bg-card) !important; border-radius: 14px;
+  border: 1px solid var(--border); padding: 6px;
 }
 [data-testid="stDataFrame"] * { color: var(--text-1) !important; font-family: var(--font-mono) !important; }
 
-/* ===== Plotly chart container ===== */
-.js-plotly-plot, .plot-container, .stPlotlyChart {
-  background: transparent !important;
-}
+/* ===== Plotly ===== */
+.js-plotly-plot, .plot-container, .stPlotlyChart { background: transparent !important; }
 
 /* ===========================================================
-   COMPONENTES CUSTOM (HTML inyectado en st.markdown)
+   HERO
    =========================================================== */
-
-/* ----- Hero ----- */
 .xg-hero {
   position: relative;
-  padding: 64px 0 56px;
+  padding: 72px 0 60px;
   margin-bottom: 18px;
   overflow: hidden;
   isolation: isolate;
@@ -249,10 +175,12 @@ div[data-baseweb="notification"]:has(svg[data-icon="error"])   { border-color: r
 }
 .xg-hero__pitch {
   position: absolute; inset: 0; z-index: -1;
-  width: 100%; height: 100%;
-  opacity: 0.45;
+  width: 100%; height: 100%; opacity: 0.35;
 }
-.xg-hero__pitch .pl { stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw 2.4s cubic-bezier(.5,.05,.25,1) forwards; }
+.xg-hero__pitch .pl {
+  stroke-dasharray: 100; stroke-dashoffset: 100;
+  animation: draw 2.4s cubic-bezier(.5,.05,.25,1) forwards;
+}
 .xg-hero__pitch .pl:nth-child(2) { animation-delay: .1s; }
 .xg-hero__pitch .pl:nth-child(3) { animation-delay: .2s; }
 .xg-hero__pitch .pl:nth-child(4) { animation-delay: .3s; }
@@ -266,144 +194,135 @@ div[data-baseweb="notification"]:has(svg[data-icon="error"])   { border-color: r
 
 .xg-hero__tag {
   display: inline-flex; align-items: center; gap: 10px;
-  padding: 6px 14px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: rgba(255,255,255,0.02);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-2);
-  font-family: var(--font-mono);
-  margin-bottom: 24px;
+  padding: 6px 14px; border: 1px solid var(--border);
+  border-radius: 999px; background: rgba(255,255,255,0.02);
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-2); font-family: var(--font-mono); margin-bottom: 28px;
 }
 .xg-hero__tag i {
   width: 8px; height: 8px; border-radius: 50%;
-  background: var(--acc-green);
-  box-shadow: 0 0 0 3px rgba(0,212,170,0.18);
+  background: var(--acc-green); box-shadow: 0 0 0 3px rgba(0,212,170,0.18);
   animation: pulseDot 2s ease-in-out infinite;
 }
 @keyframes pulseDot {
   0%, 100% { box-shadow: 0 0 0 3px rgba(0,212,170,0.18); }
   50%      { box-shadow: 0 0 0 6px rgba(0,212,170,0.05); }
 }
+
 .xg-hero__title {
   font-family: var(--font-disp);
   font-weight: 800;
-  font-size: clamp(40px, 6vw, 88px);
-  line-height: 0.96;
-  letter-spacing: -0.035em;
-  margin: 0 0 18px 0;
+  font-size: clamp(52px, 7.5vw, 96px);
+  line-height: 0.94;
+  letter-spacing: -0.04em;
+  margin: 0 0 24px 0;
   color: var(--text-1);
-  text-wrap: balance;
 }
 .xg-hero__title em {
   font-style: italic; font-weight: 900;
   background: linear-gradient(120deg, #00D4AA 0%, #5EE8C7 50%, #FFD700 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 .xg-hero__sub {
-  font-size: 18px;
-  color: var(--text-2);
-  max-width: 620px;
-  margin: 0 0 28px 0;
-  line-height: 1.55;
+  font-size: 19px; color: var(--text-2);
+  max-width: 580px; margin: 0 0 36px 0; line-height: 1.6;
 }
+
+/* CTA buttons */
+.xg-hero__cta {
+  display: flex; gap: 14px; margin-bottom: 44px; flex-wrap: wrap;
+}
+.xg-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 14px 30px; border-radius: 999px;
+  font-family: var(--font-ui); font-weight: 600; font-size: 15px;
+  text-decoration: none; transition: all .22s ease; cursor: pointer;
+  letter-spacing: 0.01em;
+}
+.xg-cta--primary {
+  background: var(--acc-green); color: var(--bg-deeper);
+  box-shadow: 0 14px 32px -10px rgba(0,212,170,0.6);
+}
+.xg-cta--primary:hover {
+  background: var(--acc-green-2); transform: translateY(-2px);
+  box-shadow: 0 18px 38px -10px rgba(0,212,170,0.7);
+  color: var(--bg-deeper);
+}
+.xg-cta--ghost {
+  background: transparent; color: var(--text-1);
+  border: 1px solid var(--border-2);
+}
+.xg-cta--ghost:hover {
+  border-color: var(--acc-green); color: var(--acc-green);
+  background: rgba(0,212,170,0.05); transform: translateY(-2px);
+}
+
 .xg-hero__stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  border-top: 1px solid var(--border);
-  padding-top: 20px;
-  margin-top: 8px;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border-top: 1px solid var(--border); padding-top: 24px;
 }
-.xg-hero__stat { padding-right: 24px; border-right: 1px solid var(--border); }
+.xg-hero__stat { padding-right: 28px; border-right: 1px solid var(--border); }
 .xg-hero__stat:last-child { border-right: none; }
 .xg-hero__stat .v {
-  font-family: var(--font-disp);
-  font-weight: 700;
-  font-size: 30px;
-  letter-spacing: -0.02em;
-  line-height: 1;
+  font-family: var(--font-disp); font-weight: 700;
+  font-size: 34px; letter-spacing: -0.02em; line-height: 1;
 }
 .xg-hero__stat .v .suf {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-2);
-  font-weight: 500;
-  margin-left: 4px;
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--text-2); font-weight: 500; margin-left: 4px;
 }
 .xg-hero__stat .l {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-2);
-  margin-top: 8px;
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-2); margin-top: 8px;
 }
 @media (max-width: 720px) { .xg-hero__stats { grid-template-columns: repeat(2, 1fr); } }
 
-/* ----- Section heads ----- */
+/* ===========================================================
+   SECTION HEAD
+   =========================================================== */
 .xg-shead { margin: 50px 0 28px; }
 .xg-shead .kk {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--acc-green);
-  margin-bottom: 10px;
+  font-family: var(--font-mono); font-size: 12px;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--acc-green); margin-bottom: 10px;
 }
 .xg-shead .tt {
-  font-family: var(--font-disp);
-  font-weight: 700;
-  font-size: clamp(28px, 4vw, 48px);
-  letter-spacing: -0.025em;
-  margin: 0 0 10px 0;
-  line-height: 1.02;
+  font-family: var(--font-disp); font-weight: 700;
+  font-size: clamp(28px, 4vw, 48px); letter-spacing: -0.025em;
+  margin: 0 0 10px 0; line-height: 1.02;
 }
 .xg-shead .ll {
-  color: var(--text-2);
-  font-size: 16px;
-  max-width: 640px;
-  margin: 0;
-  line-height: 1.55;
+  color: var(--text-2); font-size: 16px;
+  max-width: 640px; margin: 0; line-height: 1.55;
 }
 
-/* ----- Step cards (explainer 4 cards) ----- */
+/* ===========================================================
+   STEP CARDS
+   =========================================================== */
 .xg-steps {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin: 30px 0 10px;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 14px; margin: 30px 0 10px;
 }
 @media (max-width: 980px) { .xg-steps { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 560px) { .xg-steps { grid-template-columns: 1fr; } }
 .xg-step {
   padding: 24px;
   background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  min-height: 240px;
-  display: flex; flex-direction: column;
+  border: 1px solid var(--border); border-radius: 14px;
+  min-height: 240px; display: flex; flex-direction: column;
   transition: border-color .25s, transform .25s;
 }
 .xg-step:hover { border-color: var(--border-2); transform: translateY(-2px); }
 .xg-step .n {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-3);
-  letter-spacing: 0.1em;
-  margin-bottom: 14px;
+  font-family: var(--font-mono); font-size: 12px;
+  color: var(--text-3); letter-spacing: 0.1em; margin-bottom: 14px;
 }
 .xg-step .ic { width: 44px; height: 44px; color: var(--acc-green); margin-bottom: 18px; }
 .xg-step .ic svg { width: 100%; height: 100%; }
 .xg-step h3 {
-  font-family: var(--font-disp);
-  font-weight: 600;
-  font-size: 19px;
-  margin: 0 0 8px;
-  letter-spacing: -0.015em;
+  font-family: var(--font-disp); font-weight: 600; font-size: 19px;
+  margin: 0 0 8px; letter-spacing: -0.015em;
 }
 .xg-step p { color: var(--text-2); font-size: 14px; margin: 0; line-height: 1.55; }
 .n-pulse { animation: nodePulse 1.6s ease-in-out infinite; }
@@ -413,29 +332,44 @@ div[data-baseweb="notification"]:has(svg[data-icon="error"])   { border-color: r
   50% { opacity: 1; filter: drop-shadow(0 0 6px currentColor); }
 }
 
-/* ----- Result hero (big probability number) ----- */
+/* ===========================================================
+   DATASET STATS BAR
+   =========================================================== */
+.xg-ds-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 14px; margin: 0 0 28px;
+}
+.xg-ds-stat {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 22px 24px;
+}
+.xg-ds-stat .v {
+  font-family: var(--font-disp); font-weight: 800;
+  font-size: 44px; line-height: 1; letter-spacing: -0.03em;
+}
+.xg-ds-stat .l {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--text-2); margin-top: 8px;
+}
+@media (max-width: 720px) { .xg-ds-stats { grid-template-columns: repeat(2, 1fr); } }
+
+/* ===========================================================
+   RESULT BOX
+   =========================================================== */
 .xg-result {
-  padding: 28px;
-  border-radius: 16px;
-  background: rgba(0,0,0,0.22);
-  border: 1px solid var(--border);
+  padding: 28px; border-radius: 16px;
+  background: rgba(0,0,0,0.22); border: 1px solid var(--border);
   margin-top: 8px;
 }
 .xg-result .lbl {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--text-2);
-  margin-bottom: 8px;
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--text-2); margin-bottom: 8px;
 }
 .xg-result .num {
-  font-family: var(--font-disp);
-  font-weight: 800;
-  font-size: 72px;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  margin: 6px 0 16px;
+  font-family: var(--font-disp); font-weight: 800;
+  font-size: 72px; line-height: 1; letter-spacing: -0.03em; margin: 6px 0 16px;
 }
 .xg-result .num .pct { font-size: 30px; color: var(--text-2); font-weight: 600; margin-left: 4px; }
 .xg-result.is-high { border-color: rgba(0,212,170,0.35); }
@@ -445,11 +379,8 @@ div[data-baseweb="notification"]:has(svg[data-icon="error"])   { border-color: r
 .xg-result.is-low  { border-color: rgba(255,70,85,0.35); }
 .xg-result.is-low  .num { color: var(--acc-red); }
 .xg-result .bar {
-  height: 4px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 999px;
-  overflow: hidden;
-  margin-bottom: 14px;
+  height: 4px; background: rgba(255,255,255,0.08);
+  border-radius: 999px; overflow: hidden; margin-bottom: 14px;
 }
 .xg-result .bar .fill {
   height: 100%;
@@ -460,10 +391,7 @@ div[data-baseweb="notification"]:has(svg[data-icon="error"])   { border-color: r
   display: flex; align-items: center; gap: 10px;
   font-size: 14px; color: var(--text-2);
 }
-.xg-result .verdict i {
-  width: 8px; height: 8px; border-radius: 50%;
-  display: inline-block;
-}
+.xg-result .verdict i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .xg-result.is-high .verdict i { background: var(--acc-green); box-shadow: 0 0 0 4px rgba(0,212,170,0.18); }
 .xg-result.is-mid  .verdict i { background: var(--acc-yellow); box-shadow: 0 0 0 4px rgba(255,215,0,0.18); }
 .xg-result.is-low  .verdict i { background: var(--acc-red); box-shadow: 0 0 0 4px rgba(255,70,85,0.18); }
@@ -473,47 +401,101 @@ div[data-baseweb="notification"]:has(svg[data-icon="error"])   { border-color: r
   50% { transform: scale(1.08); }
 }
 
-/* ----- Glosario card ----- */
-.xg-glos {
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  border-radius: 14px;
-  padding: 22px;
-  margin-bottom: 12px;
+/* ===========================================================
+   NEURAL NETWORK DIAGRAM
+   =========================================================== */
+.xg-nn-wrap {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 20px 24px; margin-bottom: 20px;
 }
-.xg-glos .hd {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+.xg-nn-header {
+  display: flex; align-items: center; justify-content: space-between;
   margin-bottom: 14px;
 }
-.xg-glos .name {
-  font-family: var(--font-disp);
-  font-weight: 600;
-  font-size: 20px;
-  letter-spacing: -0.015em;
+.xg-nn-title {
+  font-family: var(--font-mono); font-size: 11px;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-2);
 }
-.xg-glos .sym {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--acc-green);
-  letter-spacing: 0.05em;
+.xg-nn-live {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px;
+  background: rgba(0,212,170,0.1); border: 1px solid rgba(0,212,170,0.25);
+  font-family: var(--font-mono); font-size: 10px; color: var(--acc-green);
+  letter-spacing: 0.1em;
 }
+.xg-nn-live::before {
+  content: ''; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--acc-green); animation: pulseDot 1.2s ease-in-out infinite;
+}
+
+/* ===========================================================
+   REFEREE SCENE
+   =========================================================== */
+.xg-ref {
+  position: relative; height: 380px;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(255,215,0,0.03) 0%, transparent 60%);
+  border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+  transition: background 0.5s ease, box-shadow 0.5s ease;
+}
+.xg-ref.is-yellow {
+  background: radial-gradient(ellipse at center, rgba(255,215,0,0.18) 0%, transparent 65%);
+  box-shadow: 0 0 60px -20px rgba(255,215,0,0.25), inset 0 0 40px -20px rgba(255,215,0,0.08);
+  border-color: rgba(255,215,0,0.2);
+  animation: yellowGlow 0.7s ease forwards;
+}
+@keyframes yellowGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(255,215,0,0); }
+  40%  { box-shadow: 0 0 80px -10px rgba(255,215,0,0.4), inset 0 0 40px -15px rgba(255,215,0,0.12); }
+  100% { box-shadow: 0 0 60px -20px rgba(255,215,0,0.25), inset 0 0 40px -20px rgba(255,215,0,0.08); }
+}
+.xg-ref svg.fig { height: 90%; filter: drop-shadow(0 8px 30px rgba(0,0,0,0.4)); }
+.xg-ref .arm {
+  transform-origin: 130px 80px;
+  transform: rotate(40deg);
+  transition: transform 0.55s cubic-bezier(.5,1.6,.5,1);
+}
+.xg-ref.is-yellow .arm { transform: rotate(-50deg); }
+.xg-ref .chip {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy)));
+  background: var(--bg-card-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 14px;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px; box-shadow: 0 8px 24px -10px rgba(0,0,0,0.5); z-index: 2;
+  animation: chipFloat 4s ease-in-out infinite;
+}
+.xg-ref .chip .k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--text-2); }
+.xg-ref .chip .v { color: var(--text-1); font-weight: 600; font-family: var(--font-mono); }
+@keyframes chipFloat {
+  0%, 100% { transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy))); }
+  50%      { transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy) - 8px)); }
+}
+
+/* ===========================================================
+   GLOSARIO CARD
+   =========================================================== */
+.xg-glos {
+  border: 1px solid var(--border); background: var(--bg-card);
+  border-radius: 14px; padding: 22px; margin-bottom: 12px;
+}
+.xg-glos .hd {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 14px; margin-bottom: 14px;
+}
+.xg-glos .name { font-family: var(--font-disp); font-weight: 600; font-size: 20px; letter-spacing: -0.015em; }
+.xg-glos .sym { font-family: var(--font-mono); font-size: 12px; color: var(--acc-green); letter-spacing: 0.05em; }
 .xg-glos .def { font-size: 15px; color: var(--text-1); margin: 0 0 12px; line-height: 1.55; }
 .xg-glos .formula {
-  padding: 10px 14px;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  color: var(--acc-green-2);
-  margin-bottom: 12px;
+  padding: 10px 14px; background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border); border-radius: 8px;
+  font-family: var(--font-mono); font-size: 13px;
+  color: var(--acc-green-2); margin-bottom: 12px;
 }
 .xg-glos .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
 .xg-glos .row .cell {
-  padding: 10px 12px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  padding: 10px 12px; background: rgba(255,255,255,0.02);
+  border: 1px solid var(--border); border-radius: 8px;
 }
 .xg-glos .row .cell .h {
   font-family: var(--font-mono); font-size: 10px;
@@ -526,75 +508,23 @@ div[data-baseweb="notification"]:has(svg[data-icon="error"])   { border-color: r
 .xg-glos .row .cell .h.hi .dot { background: var(--acc-green); }
 .xg-glos .row .cell .b { font-size: 13px; color: var(--text-1); }
 .xg-glos .analogy {
-  border-left: 2px solid var(--acc-green);
-  padding: 4px 0 4px 12px;
-  font-style: italic;
-  color: var(--text-2);
-  font-size: 14px;
-  margin-bottom: 12px;
+  border-left: 2px solid var(--acc-green); padding: 4px 0 4px 12px;
+  font-style: italic; color: var(--text-2); font-size: 14px; margin-bottom: 12px;
 }
 .xg-glos .tip {
-  padding: 10px 14px;
-  background: rgba(0,212,170,0.06);
-  border: 1px solid rgba(0,212,170,0.2);
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--text-1);
+  padding: 10px 14px; background: rgba(0,212,170,0.06);
+  border: 1px solid rgba(0,212,170,0.2); border-radius: 8px;
+  font-size: 13px; color: var(--text-1);
 }
 .xg-glos .tip strong { color: var(--acc-green); }
 
-/* ----- Referee scene ----- */
-.xg-ref {
-  position: relative;
-  height: 380px;
-  display: flex; align-items: center; justify-content: center;
-  background: radial-gradient(ellipse at center, rgba(255,215,0,0.04) 0%, transparent 60%);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-}
-.xg-ref.is-yellow { background: radial-gradient(ellipse at center, rgba(255,215,0,0.16) 0%, transparent 65%); }
-.xg-ref svg.fig { height: 95%; filter: drop-shadow(0 8px 30px rgba(0,0,0,0.4)); }
-.xg-ref .arm { transform-origin: 130px 80px; transform: rotate(40deg); transition: transform .6s cubic-bezier(.5,1.6,.5,1); }
-.xg-ref.is-yellow .arm { transform: rotate(-50deg); }
-.xg-ref .card { opacity: 0; transition: opacity .3s ease .2s; }
-.xg-ref.is-yellow .card { opacity: 1; animation: cardBounce .6s ease .1s; }
-@keyframes cardBounce {
-  0%   { transform: scale(.7); }
-  60%  { transform: scale(1.1); }
-  100% { transform: scale(1); }
-}
-.xg-ref .chip {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy)));
-  background: var(--bg-card-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 14px;
-  display: flex; align-items: center; gap: 10px;
-  font-size: 12px;
-  animation: chipFloat 4s ease-in-out infinite;
-  box-shadow: 0 8px 24px -10px rgba(0,0,0,0.5);
-  z-index: 2;
-}
-.xg-ref .chip .k { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--text-2); }
-.xg-ref .chip .v { color: var(--text-1); font-weight: 600; font-family: var(--font-mono); }
-@keyframes chipFloat {
-  0%, 100% { transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy))); }
-  50%      { transform: translate(calc(-50% + var(--ox)), calc(-50% + var(--oy) - 8px)); }
-}
-
-/* ----- Footer ----- */
+/* ===========================================================
+   FOOTER
+   =========================================================== */
 .xg-foot {
-  border-top: 1px solid var(--border);
-  padding: 36px 0 12px;
-  margin-top: 50px;
-  display: flex; flex-wrap: wrap;
-  gap: 40px;
-  justify-content: space-between;
-  color: var(--text-2);
-  font-size: 13px;
+  border-top: 1px solid var(--border); padding: 36px 0 12px; margin-top: 50px;
+  display: flex; flex-wrap: wrap; gap: 40px;
+  justify-content: space-between; color: var(--text-2); font-size: 13px;
 }
 .xg-foot .brand { display: flex; align-items: center; gap: 10px; }
 .xg-foot .brand .dot {
@@ -604,7 +534,6 @@ div[data-baseweb="notification"]:has(svg[data-icon="error"])   { border-color: r
 }
 .xg-foot .brand b { color: var(--text-1); font-family: var(--font-disp); font-weight: 800; letter-spacing: -0.01em; }
 
-/* ----- Misc ----- */
 hr { border: none !important; border-top: 1px solid var(--border) !important; margin: 30px 0 !important; }
 .stMarkdown a { color: var(--acc-green); }
 </style>
@@ -612,16 +541,13 @@ hr { border: none !important; border-top: 1px solid var(--border) !important; ma
 
 
 def inject_css() -> None:
-    """Inyecta el bloque global de CSS. Llamar una vez al inicio de app.py."""
     st.markdown(CSS, unsafe_allow_html=True)
 
 
 # ===================================================================
-# COMPONENTES HTML
+# HERO
 # ===================================================================
-
 def hero(n_tiros: int, target_acc: int = 78) -> str:
-    """Hero principal — título grande, subtítulo, cancha blueprint detrás, stats."""
     return f"""
 <div class="xg-hero">
   <svg class="xg-hero__pitch" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -644,30 +570,37 @@ def hero(n_tiros: int, target_acc: int = 78) -> str:
     Una red neuronal mira miles de tiros y aprende, sola, qué hace que una pelota
     termine en el fondo del arco. Sin reglas. Sin fórmulas. Solo patrones.
   </p>
+  <div class="xg-hero__cta">
+    <a class="xg-cta xg-cta--primary" href="#" onclick="window.scrollBy({{top:220,behavior:'smooth'}});return false;">
+      Empezar
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+    </a>
+    <a class="xg-cta xg-cta--ghost" href="#" onclick="window.scrollBy({{top:220,behavior:'smooth'}});return false;">
+      Ir directo al simulador
+    </a>
+  </div>
   <div class="xg-hero__stats">
     <div class="xg-hero__stat">
-      <div class="v">{n_tiros}</div>
-      <div class="l">tiros analizados</div>
+      <div class="v">{n_tiros}</div><div class="l">tiros analizados</div>
     </div>
     <div class="xg-hero__stat">
-      <div class="v">2<span class="suf">capas</span></div>
-      <div class="l">ocultas tanh</div>
+      <div class="v">2<span class="suf">capas</span></div><div class="l">ocultas tanh</div>
     </div>
     <div class="xg-hero__stat">
-      <div class="v">{target_acc}<span class="suf">%</span></div>
-      <div class="l">accuracy objetivo</div>
+      <div class="v">{target_acc}<span class="suf">%</span></div><div class="l">accuracy objetivo</div>
     </div>
     <div class="xg-hero__stat">
-      <div class="v">0<span class="suf">deps ML</span></div>
-      <div class="l">sin TF · sin sklearn</div>
+      <div class="v">0<span class="suf">deps ML</span></div><div class="l">sin TF · sin sklearn</div>
     </div>
   </div>
 </div>
 """
 
 
+# ===================================================================
+# SECTION HEAD
+# ===================================================================
 def section_head(kicker: str, title: str, lead: str = "") -> str:
-    """Encabezado de sección con kicker monoespaciado + título display."""
     return f"""
 <div class="xg-shead">
   <div class="kk">{kicker}</div>
@@ -677,6 +610,9 @@ def section_head(kicker: str, title: str, lead: str = "") -> str:
 """
 
 
+# ===================================================================
+# STEPS EXPLAINER
+# ===================================================================
 def steps_explainer() -> str:
     icon1 = """<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.6">
       <rect x="6" y="14" width="22" height="6" rx="1"/>
@@ -689,14 +625,10 @@ def steps_explainer() -> str:
     </svg>"""
     icon2 = """<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="1.4">
       <g stroke-opacity="0.5">
-        <line x1="10" y1="20" x2="32" y2="14"/>
-        <line x1="10" y1="20" x2="32" y2="32"/>
-        <line x1="10" y1="20" x2="32" y2="50"/>
-        <line x1="10" y1="44" x2="32" y2="14"/>
-        <line x1="10" y1="44" x2="32" y2="32"/>
-        <line x1="10" y1="44" x2="32" y2="50"/>
-        <line x1="32" y1="14" x2="54" y2="32"/>
-        <line x1="32" y1="32" x2="54" y2="32"/>
+        <line x1="10" y1="20" x2="32" y2="14"/><line x1="10" y1="20" x2="32" y2="32"/>
+        <line x1="10" y1="20" x2="32" y2="50"/><line x1="10" y1="44" x2="32" y2="14"/>
+        <line x1="10" y1="44" x2="32" y2="32"/><line x1="10" y1="44" x2="32" y2="50"/>
+        <line x1="32" y1="14" x2="54" y2="32"/><line x1="32" y1="32" x2="54" y2="32"/>
         <line x1="32" y1="50" x2="54" y2="32"/>
       </g>
       <circle cx="10" cy="20" r="3.5" fill="currentColor"/>
@@ -732,27 +664,141 @@ def steps_explainer() -> str:
 """
 
 
+# ===================================================================
+# DATASET STATS BAR
+# ===================================================================
+def dataset_stats(n_total: int, n_goles: int) -> str:
+    n_no_gol = n_total - n_goles
+    pct = n_goles / n_total * 100
+    return f"""
+<div class="xg-ds-stats">
+  <div class="xg-ds-stat">
+    <div class="v" style="color:var(--text-1)">{n_total}</div>
+    <div class="l">tiros totales</div>
+  </div>
+  <div class="xg-ds-stat">
+    <div class="v" style="color:var(--acc-green)">{n_goles}</div>
+    <div class="l">goles ⚽</div>
+  </div>
+  <div class="xg-ds-stat">
+    <div class="v" style="color:var(--acc-red)">{n_no_gol}</div>
+    <div class="l">no goles</div>
+  </div>
+  <div class="xg-ds-stat">
+    <div class="v" style="color:var(--acc-yellow)">{pct:.1f}<span style="font-size:22px;color:var(--text-2);font-weight:600">%</span></div>
+    <div class="l">conversión</div>
+  </div>
+</div>
+"""
+
+
+# ===================================================================
+# NEURAL NETWORK DIAGRAM
+# ===================================================================
+def nn_diagram(arch: list, is_training: bool = False) -> str:
+    """SVG diagram of the MLP architecture. Max 6 nodes shown per layer."""
+    MAX_SHOW = 6
+    W, H = 620, 240
+    pad_x, pad_y = 70, 28
+    n_layers = len(arch)
+    xs = [pad_x + i * (W - 2 * pad_x) / max(n_layers - 1, 1) for i in range(n_layers)]
+
+    node_r = 9
+    lines_svg = ""
+    nodes_svg = ""
+    labels_svg = ""
+
+    layer_ys = []
+    for li, n in enumerate(arch):
+        show = min(n, MAX_SHOW)
+        layer_h = H - 2 * pad_y
+        if show == 1:
+            ys = [H / 2]
+        else:
+            ys = [pad_y + j * layer_h / (show - 1) for j in range(show)]
+        layer_ys.append(ys)
+
+    # Draw connections
+    for li in range(n_layers - 1):
+        for y0 in layer_ys[li]:
+            for y1 in layer_ys[li + 1]:
+                lines_svg += (
+                    f'<line x1="{xs[li]:.1f}" y1="{y0:.1f}" '
+                    f'x2="{xs[li+1]:.1f}" y2="{y1:.1f}" '
+                    f'stroke="rgba(255,255,255,0.07)" stroke-width="1"/>'
+                )
+
+    # Draw nodes
+    pulse_css = ""
+    if is_training:
+        pulse_css = """
+        @keyframes nnP {
+          0%,100%{opacity:.65;transform:scale(1);}
+          50%{opacity:1;transform:scale(1.35);filter:drop-shadow(0 0 7px currentColor);}
+        }
+        .nnp{animation:nnP 1.1s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+        """
+
+    node_colors = {0: "#00D4AA", -1: "#FFD700"}
+    for li, (x, ys) in enumerate(zip(xs, layer_ys)):
+        n = arch[li]
+        show = min(n, MAX_SHOW)
+        color = node_colors.get(li if li == 0 else (li - n_layers + 1 if li == n_layers - 1 else None), "#5EE8C7")
+        cls = "nnp" if is_training else ""
+        for ji, y in enumerate(ys):
+            delay = f"{(li * 0.15 + ji * 0.08) % 1.4:.2f}s"
+            style = f'animation-delay:{delay}' if is_training else ""
+            nodes_svg += (
+                f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{node_r}" '
+                f'fill="{color}" fill-opacity="0.9" class="{cls}" style="{style}"/>'
+            )
+        if n > MAX_SHOW:
+            nodes_svg += (
+                f'<text x="{x:.1f}" y="{H - pad_y + 6:.1f}" text-anchor="middle" '
+                f'fill="rgba(255,255,255,0.35)" font-family="JetBrains Mono" font-size="10">+{n-MAX_SHOW}</text>'
+            )
+        # Layer label
+        lbl = "Input" if li == 0 else ("Output" if li == n_layers - 1 else f"Oculta {li}")
+        count = f"{n}n" if 0 < li < n_layers - 1 else ("2 feat" if li == 0 else "1 out")
+        labels_svg += (
+            f'<text x="{x:.1f}" y="{H + 16:.0f}" text-anchor="middle" '
+            f'fill="rgba(255,255,255,0.35)" font-family="JetBrains Mono" font-size="10">{lbl}</text>'
+            f'<text x="{x:.1f}" y="{H + 30:.0f}" text-anchor="middle" '
+            f'fill="{color}" font-family="JetBrains Mono" font-size="9" opacity="0.8">{count}</text>'
+        )
+
+    live_badge = '<span class="xg-nn-live">entrenando</span>' if is_training else ""
+    return f"""
+<div class="xg-nn-wrap">
+  <div class="xg-nn-header">
+    <span class="xg-nn-title">Arquitectura de la red</span>
+    {live_badge}
+  </div>
+  <svg viewBox="0 0 {W} {H+36}" width="100%" style="overflow:visible;max-height:300px;">
+    <style>{pulse_css}</style>
+    {lines_svg}
+    {nodes_svg}
+    {labels_svg}
+  </svg>
+</div>
+"""
+
+
+# ===================================================================
+# RESULT BOX
+# ===================================================================
 def result_box(proba: float, verdict_high: str = "⚽ Chance clara",
                verdict_mid: str = "Chance moderada",
                verdict_low: str = "🔴 Muy difícil",
                label: str = "Probabilidad de gol") -> str:
-    """
-    Caja grande con porcentaje + barra de color + verdict.
-    Cambia color/clase según tier (low <20%, mid 20-50%, high >=50%).
-    """
     pct = int(round(proba * 100))
     if proba >= 0.5:
-        tier = "is-high"
-        verdict = verdict_high
+        tier, verdict = "is-high", verdict_high
         goal_class = "is-goal" if proba > 0.7 else ""
     elif proba >= 0.2:
-        tier = "is-mid"
-        verdict = verdict_mid
-        goal_class = ""
+        tier, verdict, goal_class = "is-mid", verdict_mid, ""
     else:
-        tier = "is-low"
-        verdict = verdict_low
-        goal_class = ""
+        tier, verdict, goal_class = "is-low", verdict_low, ""
     return f"""
 <div class="xg-result {tier} {goal_class}">
   <div class="lbl">{label}</div>
@@ -763,14 +809,36 @@ def result_box(proba: float, verdict_high: str = "⚽ Chance clara",
 """
 
 
+# ===================================================================
+# REFEREE SCENE  — animation retrriggers via unique anim name per render
+# ===================================================================
 def referee_scene(vel: int, ball: bool, zona: str, minuto: int, score: int,
-                  is_yellow: bool) -> str:
-    """Escena del árbitro con chips flotantes + figura geométrica."""
+                  is_yellow: bool, render_key: str = "") -> str:
     yellow_cls = "is-yellow" if is_yellow else ""
     ball_txt = "Sí" if ball else "No"
     zona_txt = zona.capitalize()
     score_txt = f"+{score}" if score > 0 else f"{score}"
+
+    # Unique animation name so the browser always replays it
+    anim_id = render_key or f"{vel}{int(ball)}{zona}{minuto}{score}"
+    card_anim_name = f"cardFly_{abs(hash(anim_id)) % 99999}"
+
+    card_anim_css = f"""
+    @keyframes {card_anim_name} {{
+      0%   {{ transform: translateY(28px) scale(0.3) rotate(-22deg); opacity: 0; }}
+      50%  {{ transform: translateY(-14px) scale(1.18) rotate(9deg); opacity: 1; }}
+      78%  {{ transform: translateY(5px) scale(0.96) rotate(-3deg); }}
+      100% {{ transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }}
+    }}
+    """ if is_yellow else ""
+
+    card_style = (
+        f"opacity:1; animation:{card_anim_name} 0.62s cubic-bezier(0.34,1.56,0.64,1) 0.08s both;"
+        " transform-box:fill-box; transform-origin:161px 121px;"
+    ) if is_yellow else "opacity:0;"
+
     return f"""
+<style>{card_anim_css}</style>
 <div class="xg-ref {yellow_cls}">
   <div class="chip" style="--ox:-220px; --oy:-100px;">
     <span class="k">VEL</span><span class="v">{vel}</span>
@@ -791,13 +859,13 @@ def referee_scene(vel: int, ball: bool, zona: str, minuto: int, score: int,
     <circle cx="100" cy="42" r="20" fill="none" stroke="#fff" stroke-width="1.6"/>
     <path d="M 70 70 L 130 70 L 138 180 L 62 180 Z" fill="none" stroke="#fff" stroke-width="1.6"/>
     <line x1="64" y1="140" x2="136" y2="140" stroke="#fff" stroke-width="1.2" stroke-dasharray="3 3"/>
-    <rect x="105" y="100" width="14" height="20" fill="none" stroke="#FFD700" stroke-width="1.4" stroke-opacity="0.6"/>
+    <rect x="105" y="100" width="14" height="20" fill="none" stroke="#FFD700" stroke-width="1.4" stroke-opacity="0.5"/>
     <line x1="80" y1="180" x2="76" y2="260" stroke="#fff" stroke-width="1.6"/>
     <line x1="120" y1="180" x2="124" y2="260" stroke="#fff" stroke-width="1.6"/>
     <line x1="70" y1="80" x2="40" y2="130" stroke="#fff" stroke-width="1.6"/>
     <g class="arm">
       <line x1="130" y1="80" x2="160" y2="130" stroke="#fff" stroke-width="1.6"/>
-      <g class="card" style="transform-origin:160px 130px;">
+      <g style="{card_style}">
         <rect x="152" y="108" width="18" height="26" rx="1.5" fill="#FFD700" stroke="#fff" stroke-width="1"/>
       </g>
     </g>
@@ -806,14 +874,14 @@ def referee_scene(vel: int, ball: bool, zona: str, minuto: int, score: int,
 """
 
 
+# ===================================================================
+# GLOSARIO CARD
+# ===================================================================
 def glosario_card(name: str, sym: str, definicion: str, formula: str,
                   bajo: str, alto: str, analogia: str, tip: str) -> str:
     return f"""
 <div class="xg-glos">
-  <div class="hd">
-    <span class="name">{name}</span>
-    <span class="sym">{sym}</span>
-  </div>
+  <div class="hd"><span class="name">{name}</span><span class="sym">{sym}</span></div>
   <p class="def">{definicion}</p>
   <div class="formula">{formula}</div>
   <div class="row">
@@ -826,6 +894,9 @@ def glosario_card(name: str, sym: str, definicion: str, formula: str,
 """
 
 
+# ===================================================================
+# FOOTER
+# ===================================================================
 def footer() -> str:
     return """
 <div class="xg-foot">
