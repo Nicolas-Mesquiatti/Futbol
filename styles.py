@@ -245,13 +245,13 @@ code {
   letter-spacing: 0.01em;
 }
 .xg-cta--primary {
-  background: var(--acc-green); color: var(--bg-deeper);
+  background: var(--acc-green); color: #0A1018 !important;
   box-shadow: 0 14px 32px -10px rgba(0,212,170,0.6);
 }
 .xg-cta--primary:hover {
   background: var(--acc-green-2); transform: translateY(-2px);
   box-shadow: 0 18px 38px -10px rgba(0,212,170,0.7);
-  color: var(--bg-deeper);
+  color: #0A1018 !important;
 }
 .xg-cta--ghost {
   background: transparent; color: var(--text-1);
@@ -543,34 +543,25 @@ hr { border: none !important; border-top: 1px solid var(--border) !important; ma
 .stMarkdown a { color: var(--acc-green); }
 
 /* ===========================================================
-   LINEUP SCENE — Titular / Suplente
+   LINEUP & INJURY TABLES (rendered via st.markdown)
    =========================================================== */
-.xg-lineup-scene {
-  position: relative; height: 340px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
-  background: radial-gradient(ellipse at center, var(--glow,rgba(0,212,170,0.05)) 0%, transparent 65%);
-  transition: background 0.5s ease;
-}
-.lineup-fig-wrap { display: flex; align-items: center; justify-content: center; }
-.lineup-fig { width: 160px; height: 260px; }
-.lineup-badge {
-  margin-top: 12px; padding: 5px 20px; border-radius: 999px;
-  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em;
-  font-weight: 600; border: 1px solid; text-transform: uppercase;
-}
-.xg-lineup-table {
-  background: var(--bg-card); border: 1px solid var(--border);
+.xg-lineup-table, .xg-injury-table {
+  background: #1A1A2E; border: 1px solid rgba(255,255,255,0.08);
   border-radius: 14px; padding: 18px; margin-top: 16px;
 }
-.xg-lineup-table .lt-row {
+.xg-lineup-table .lt-row, .xg-injury-table .lt-row {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+  padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 14px;
 }
-.xg-lineup-table .lt-row:last-child { border-bottom: none; }
-.xg-lineup-table .lt-feat { color: var(--text-2); font-family: var(--font-mono); font-size: 12px; }
-.xg-lineup-table .lt-val  { color: var(--text-1); font-family: var(--font-mono); font-weight: 600; }
-.xg-lineup-table .lt-imp  { font-size: 13px; }
+.xg-lineup-table .lt-row:last-child,
+.xg-injury-table  .lt-row:last-child { border-bottom: none; }
+.xg-lineup-table .lt-feat, .xg-injury-table .lt-feat {
+  color: #8A9BB0; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+}
+.xg-lineup-table .lt-val, .xg-injury-table .lt-val {
+  color: #FFFFFF; font-family: 'JetBrains Mono', monospace; font-weight: 600;
+}
+.xg-lineup-table .lt-imp, .xg-injury-table .lt-imp { font-size: 13px; }
 </style>
 """
 
@@ -582,24 +573,34 @@ def inject_css() -> None:
 # ===================================================================
 # HERO
 # ===================================================================
+def hero_js() -> str:
+    """Injects scroll+tab helper functions into the parent Streamlit page.
+    Render via: st.components.v1.html(styles.hero_js(), height=0)
+    Tab indices (0-based): 0=Cómo funciona, 1=Los datos, 2=Entrenar la red,
+    3=Simulador xG, 4=Árbitro IA, 5=Titular o Suplente, 6=¿Se lesiona?, 7=Glosario
+    """
+    return """<script>
+// "Empezar →": scroll to first tab (Cómo funciona)
+parent.xgEmpezar = function() {
+  var el = parent.document.querySelector('[data-baseweb="tab-list"]');
+  if (el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+};
+// "Ir directo al simulador": activate "Entrenar la red" tab (index 2) and scroll
+parent.xgSimulador = function() {
+  var tabs = parent.document.querySelectorAll('[data-baseweb="tab"]');
+  if (tabs && tabs.length > 2) {
+    tabs[2].click();
+    setTimeout(function() {
+      var tl = parent.document.querySelector('[data-baseweb="tab-list"]');
+      if (tl) tl.scrollIntoView({behavior: 'smooth', block: 'start'});
+    }, 200);
+  }
+};
+</script>"""
+
+
 def hero(n_tiros: int, target_acc: int = 78) -> str:
     return f"""
-<script>
-function xgEmpezar(){{
-  var el=document.querySelector('[data-baseweb="tab-list"]');
-  if(el){{el.scrollIntoView({{behavior:'smooth',block:'start'}});}}
-}}
-function xgSimulador(){{
-  var tabs=document.querySelectorAll('[data-baseweb="tab"]');
-  if(tabs&&tabs[3]){{
-    tabs[3].click();
-    setTimeout(function(){{
-      var tl=document.querySelector('[data-baseweb="tab-list"]');
-      if(tl)tl.scrollIntoView({{behavior:'smooth',block:'start'}});
-    }},200);
-  }}
-}}
-</script>
 <div class="xg-hero">
   <svg class="xg-hero__pitch" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <g fill="none" stroke="#00D4AA" stroke-width="1.4" stroke-opacity="0.5">
@@ -974,66 +975,88 @@ animation:gFlash{n} 0.9s ease forwards;">
 
 
 # ===================================================================
-# LINEUP SCENE
+# LINEUP SCENE  — self-contained HTML for st.components.v1.html()
 # ===================================================================
 def lineup_scene(is_titular: bool, render_key: str = "") -> str:
-    """SVG player figure — stands up as TITULAR, sits as SUPLENTE. Animation retrtiggers per key."""
+    """Returns a complete HTML document for st.components.v1.html(height=400).
+    Standing green figure = TITULAR; sitting orange figure on bench = SUPLENTE.
+    Animation keyframe name is unique per render_key so it always replays."""
     n = abs(hash(render_key or str(is_titular))) % 999983
-    color   = "#00D4AA" if is_titular else "#FF8C42"
-    badge   = "TITULAR"  if is_titular else "SUPLENTE"
-    bg      = "rgba(0,212,170,0.12)"  if is_titular else "rgba(255,140,66,0.12)"
-    glow    = "rgba(0,212,170,0.12)"  if is_titular else "rgba(255,140,66,0.10)"
-    dy      = "-18px" if is_titular else "18px"
+    color  = "#00D4AA" if is_titular else "#FF8C42"
+    badge  = "TITULAR"  if is_titular else "SUPLENTE"
+    bg_col = "rgba(0,212,170,0.14)" if is_titular else "rgba(255,140,66,0.14)"
+    glow   = "rgba(0,212,170,0.18)" if is_titular else "rgba(255,140,66,0.14)"
+    dy     = "-22px"   if is_titular else "22px"
 
     if is_titular:
-        figure = f"""
-        <circle cx="100" cy="36" r="18" fill="none" stroke="{color}" stroke-width="1.8"/>
-        <path d="M78 56 L64 82 L80 80 L100 175 L120 80 L136 82 L122 56 Z"
-              fill="{bg}" stroke="{color}" stroke-width="1.6"/>
-        <text x="100" y="126" text-anchor="middle" fill="{color}" font-size="20"
-              font-weight="900" font-family="Outfit">11</text>
-        <line x1="78" y1="68" x2="46" y2="108" stroke="{color}" stroke-width="1.8"/>
-        <line x1="122" y1="68" x2="154" y2="108" stroke="{color}" stroke-width="1.8"/>
-        <line x1="90" y1="175" x2="83" y2="255" stroke="{color}" stroke-width="1.8"/>
-        <line x1="110" y1="175" x2="117" y2="255" stroke="{color}" stroke-width="1.8"/>
-        """
+        # Standing figure — upright with jersey number
+        figure_svg = f"""
+<circle cx="100" cy="42" r="22" fill="none" stroke="{color}" stroke-width="2"/>
+<path d="M76 64 L60 94 L78 92 L100 185 L122 92 L140 94 L124 64 Z"
+      fill="{bg_col}" stroke="{color}" stroke-width="1.8"/>
+<text x="100" y="138" text-anchor="middle" fill="{color}"
+      font-size="30" font-weight="900" font-family="sans-serif">11</text>
+<line x1="76" y1="78" x2="44" y2="116" stroke="{color}" stroke-width="2"/>
+<line x1="124" y1="78" x2="156" y2="116" stroke="{color}" stroke-width="2"/>
+<line x1="90" y1="185" x2="82" y2="262" stroke="{color}" stroke-width="2.2"/>
+<line x1="110" y1="185" x2="118" y2="262" stroke="{color}" stroke-width="2.2"/>"""
     else:
-        figure = f"""
-        <circle cx="100" cy="36" r="18" fill="none" stroke="{color}" stroke-width="1.8"/>
-        <path d="M80 56 L68 78 L82 76 L100 148 L118 76 L132 78 L120 56 Z"
-              fill="{bg}" stroke="{color}" stroke-width="1.6"/>
-        <text x="100" y="108" text-anchor="middle" fill="{color}" font-size="10"
-              font-family="JetBrains Mono" letter-spacing="0.05em">VEST</text>
-        <line x1="80" y1="66" x2="58" y2="92" stroke="{color}" stroke-width="1.8"/>
-        <line x1="58" y1="92" x2="62" y2="152" stroke="{color}" stroke-width="1.8"/>
-        <line x1="120" y1="66" x2="142" y2="92" stroke="{color}" stroke-width="1.8"/>
-        <line x1="142" y1="92" x2="138" y2="152" stroke="{color}" stroke-width="1.8"/>
-        <line x1="92" y1="148" x2="58" y2="192" stroke="{color}" stroke-width="1.8"/>
-        <line x1="58" y1="192" x2="36" y2="182" stroke="{color}" stroke-width="1.8"/>
-        <line x1="108" y1="148" x2="142" y2="192" stroke="{color}" stroke-width="1.8"/>
-        <line x1="142" y1="192" x2="164" y2="182" stroke="{color}" stroke-width="1.8"/>
-        """
+        # Sitting on bench — bent knees, orange bib, bench below
+        figure_svg = f"""
+<circle cx="94" cy="46" r="22" fill="none" stroke="{color}" stroke-width="2"/>
+<path d="M72 68 L60 94 L76 92 L94 162 L112 92 L128 94 L116 68 Z"
+      fill="{bg_col}" stroke="{color}" stroke-width="1.8"/>
+<text x="94" y="128" text-anchor="middle" fill="{color}"
+      font-size="11" font-family="monospace" letter-spacing="1">VEST</text>
+<line x1="72" y1="80" x2="50" y2="106" stroke="{color}" stroke-width="2"/>
+<line x1="50" y1="106" x2="54" y2="162" stroke="{color}" stroke-width="2"/>
+<line x1="116" y1="80" x2="138" y2="106" stroke="{color}" stroke-width="2"/>
+<line x1="138" y1="106" x2="134" y2="162" stroke="{color}" stroke-width="2"/>
+<line x1="87" y1="162" x2="72" y2="210" stroke="{color}" stroke-width="2.2"/>
+<line x1="72" y1="210" x2="96" y2="214" stroke="{color}" stroke-width="2.2"/>
+<line x1="101" y1="162" x2="116" y2="210" stroke="{color}" stroke-width="2.2"/>
+<line x1="116" y1="210" x2="140" y2="214" stroke="{color}" stroke-width="2.2"/>
+<line x1="28" y1="218" x2="168" y2="218" stroke="{color}" stroke-width="3.5" stroke-opacity="0.5"/>
+<line x1="42" y1="218" x2="42" y2="248" stroke="{color}" stroke-width="2.5" stroke-opacity="0.4"/>
+<line x1="154" y1="218" x2="154" y2="248" stroke="{color}" stroke-width="2.5" stroke-opacity="0.4"/>"""
 
-    return f"""
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
 <style>
-@keyframes pEnter{n}{{
-  0%{{opacity:0;transform:translateY({dy}) scale(0.88);}}
-  100%{{opacity:1;transform:translateY(0) scale(1);}}
-}}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ background: #0F1923; font-family: -apple-system, system-ui, sans-serif; overflow: hidden; }}
+  @keyframes pEnter{n} {{
+    0%   {{ opacity: 0; transform: translateY({dy}) scale(0.88); }}
+    100% {{ opacity: 1; transform: translateY(0)   scale(1);    }}
+  }}
+  .scene {{
+    height: 390px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden;
+    background: radial-gradient(ellipse at center, {glow} 0%, transparent 65%);
+  }}
+  .fig-wrap {{
+    animation: pEnter{n} 0.55s cubic-bezier(0.34,1.56,0.64,1) both;
+    display: flex; align-items: center; justify-content: center;
+  }}
+  .fig-wrap svg {{ width: 170px; height: 290px; }}
+  .badge {{
+    margin-top: 14px; padding: 5px 22px; border-radius: 999px;
+    font-size: 12px; letter-spacing: 0.14em; font-weight: 700;
+    text-transform: uppercase; border: 1px solid {color};
+    background: {bg_col}; color: {color};
+  }}
 </style>
-<div class="xg-lineup-scene" style="--glow:{glow};">
-  <div class="lineup-fig-wrap"
-       style="animation:pEnter{n} 0.55s cubic-bezier(0.34,1.56,0.64,1) both;">
-    <svg viewBox="0 0 200 270" class="lineup-fig">
-      {figure}
+</head><body>
+<div class="scene">
+  <div class="fig-wrap">
+    <svg viewBox="0 0 200 270" xmlns="http://www.w3.org/2000/svg">
+      {figure_svg}
     </svg>
   </div>
-  <div class="lineup-badge"
-       style="background:{bg};border-color:{color};color:{color};">
-    {badge}
-  </div>
+  <div class="badge">{badge}</div>
 </div>
-"""
+</body></html>"""
 
 
 def lineup_feature_table(goals: float, assists: float, pct: float,
@@ -1061,6 +1084,126 @@ def lineup_feature_table(goals: float, assists: float, pct: float,
         for feat, val, imp_txt in rows
     )
     return f'<div class="xg-lineup-table">{rows_html}</div>'
+
+
+# ===================================================================
+# INJURY SCENE  — self-contained HTML for st.components.v1.html()
+# ===================================================================
+def injury_scene(is_injured: bool, render_key: str = "") -> str:
+    """Returns a complete HTML document for st.components.v1.html(height=400).
+    Standing figure with pulsing green cross = no injury.
+    Lying figure on stretcher with red cross = injury risk."""
+    n = abs(hash(render_key or str(is_injured))) % 999983
+    color  = "#FF4655" if is_injured else "#00D4AA"
+    badge  = "EN RIESGO"  if is_injured else "SIN RIESGO"
+    bg_col = "rgba(255,70,85,0.14)"  if is_injured else "rgba(0,212,170,0.14)"
+    glow   = "rgba(255,70,85,0.20)"  if is_injured else "rgba(0,212,170,0.18)"
+    dy     = "22px" if is_injured else "-22px"
+
+    if is_injured:
+        # Lying down on a stretcher, red medical cross above
+        figure_svg = f"""
+<rect x="88" y="8" width="14" height="42" rx="3" fill="{color}" opacity="0.9"/>
+<rect x="76" y="20" width="38" height="14" rx="3" fill="{color}" opacity="0.9"/>
+<rect x="12" y="188" width="176" height="16" rx="5"
+      fill="rgba(255,70,85,0.10)" stroke="{color}" stroke-width="1.5" stroke-opacity="0.55"/>
+<line x1="30"  y1="204" x2="30"  y2="232" stroke="{color}" stroke-width="2.5" stroke-opacity="0.4"/>
+<line x1="170" y1="204" x2="170" y2="232" stroke="{color}" stroke-width="2.5" stroke-opacity="0.4"/>
+<circle cx="158" cy="196" r="17" fill="none" stroke="{color}" stroke-width="2"/>
+<line x1="141" y1="196" x2="66"  y2="196" stroke="{color}" stroke-width="2.8"/>
+<line x1="66"  y1="196" x2="22"  y2="196" stroke="{color}" stroke-width="2.2"/>
+<line x1="102" y1="196" x2="92"  y2="175" stroke="{color}" stroke-width="2"/>
+<line x1="102" y1="196" x2="89"  y2="217" stroke="{color}" stroke-width="2"/>"""
+    else:
+        # Standing figure with pulsing green cross floating above head
+        cross_anim = f"crossPulse{n}"
+        figure_svg = f"""
+<g style="animation:{cross_anim} 2s ease-in-out infinite; transform-origin:100px 30px;">
+  <rect x="93" y="8"  width="14" height="44" rx="3" fill="{color}" opacity="0.9"/>
+  <rect x="80" y="20" width="40" height="14" rx="3" fill="{color}" opacity="0.9"/>
+</g>
+<circle cx="100" cy="84" r="21" fill="none" stroke="{color}" stroke-width="2"/>
+<line x1="100" y1="105" x2="100" y2="175" stroke="{color}" stroke-width="2.8"/>
+<line x1="100" y1="128" x2="64"  y2="155" stroke="{color}" stroke-width="2"/>
+<line x1="100" y1="128" x2="136" y2="155" stroke="{color}" stroke-width="2"/>
+<line x1="100" y1="175" x2="82"  y2="250" stroke="{color}" stroke-width="2.2"/>
+<line x1="100" y1="175" x2="118" y2="250" stroke="{color}" stroke-width="2.2"/>"""
+
+    cross_css = (
+        f"@keyframes crossPulse{n} {{"
+        "0%,100%{opacity:0.9;filter:drop-shadow(0 0 4px currentColor);}"
+        "50%{opacity:1;filter:drop-shadow(0 0 14px currentColor);}}"
+    ) if not is_injured else ""
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+  body {{ background: #0F1923; font-family: -apple-system, system-ui, sans-serif; overflow: hidden; }}
+  {cross_css}
+  @keyframes injEnter{n} {{
+    0%   {{ opacity: 0; transform: translateY({dy}) scale(0.88); }}
+    100% {{ opacity: 1; transform: translateY(0)   scale(1);    }}
+  }}
+  @keyframes redGlow{n} {{
+    0%,100% {{ box-shadow: inset 0 0 0 0 rgba(255,70,85,0); }}
+    50%     {{ box-shadow: inset 0 0 60px 0 rgba(255,70,85,0.3); }}
+  }}
+  .scene {{
+    height: 390px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden;
+    background: radial-gradient(ellipse at center, {glow} 0%, transparent 65%);
+    {"animation: redGlow" + str(n) + " 2.5s ease-in-out infinite;" if is_injured else ""}
+  }}
+  .fig-wrap {{
+    animation: injEnter{n} 0.55s cubic-bezier(0.34,1.56,0.64,1) both;
+    display: flex; align-items: center; justify-content: center;
+  }}
+  .fig-wrap svg {{ width: 170px; height: 290px; }}
+  .badge {{
+    margin-top: 14px; padding: 5px 22px; border-radius: 999px;
+    font-size: 12px; letter-spacing: 0.14em; font-weight: 700;
+    text-transform: uppercase; border: 1px solid {color};
+    background: {bg_col}; color: {color};
+  }}
+</style>
+</head><body>
+<div class="scene">
+  <div class="fig-wrap">
+    <svg viewBox="0 0 200 270" xmlns="http://www.w3.org/2000/svg">
+      {figure_svg}
+    </svg>
+  </div>
+  <div class="badge">{badge}</div>
+</div>
+</body></html>"""
+
+
+def injury_feature_table(minutos: float, dias: float, edad: float,
+                         inten: float, partidos: float) -> str:
+    """Table showing each injury feature value and its risk level."""
+    def risk(score: float) -> str:
+        if score > 0.65: return "🔴 Alto"
+        if score > 0.35: return "🟡 Medio"
+        return "🟢 Bajo"
+
+    rows = [
+        ("Minutos últimos 3 partidos",        f"{int(minutos)}'", risk(minutos / 270)),
+        ("Días desde última lesión",          f"{int(dias)} días", risk(1.0 - min(dias, 365) / 365)),
+        ("Edad del jugador",                  f"{int(edad)} años", risk(max(0.0, (edad - 24) / 14))),
+        ("Intensidad de entrenamiento (1–10)", f"{inten:.1f}",     risk((inten - 1) / 9)),
+        ("Partidos en últimos 30 días",        f"{int(partidos)}",  risk(partidos / 12)),
+    ]
+    rows_html = "".join(
+        f'<div class="lt-row">'
+        f'<span class="lt-feat">{feat}</span>'
+        f'<span class="lt-val">{val}</span>'
+        f'<span class="lt-imp">{risk_txt}</span>'
+        f'</div>'
+        for feat, val, risk_txt in rows
+    )
+    return f'<div class="xg-injury-table">{rows_html}</div>'
 
 
 # ===================================================================

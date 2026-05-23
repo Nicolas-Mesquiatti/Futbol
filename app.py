@@ -4,6 +4,7 @@ TP Integrador — Introducción a las Redes Neuronales — Opción B: MLP
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -13,6 +14,7 @@ from mlp import MLP
 import ref_model
 import styles
 import lineup_model
+import injury_model
 
 
 # ===================================================================
@@ -56,9 +58,9 @@ def generar_tiros(n: int = 600, seed: int = 42) -> tuple:
     rng = np.random.default_rng(seed)
     distancia = rng.uniform(4, 36, n)
     angulo    = rng.uniform(3, 87, n)
-    # Boosted formula → ~27% of shots become goals (más realista para el simulador)
-    raw = 1.1 * np.exp(-distancia / 10.0) * (angulo / 90.0) ** 0.32
-    xg  = np.clip(raw, 0.07, 0.88)
+    # Tuned formula → ~22-25% goals (≈130-140 out of 600); close shots reach >50% xG
+    raw = 1.25 * np.exp(-distancia / 11.5) * (angulo / 90.0) ** 0.30
+    xg  = np.clip(raw, 0.04, 0.92)
     gol = (rng.uniform(0, 1, n) < xg).astype(float)
     return distancia, angulo, gol, xg
 
@@ -239,7 +241,8 @@ GLOSARIO = [
 # ===================================================================
 def _init_state():
     for k, v in dict(mlp_xg=None, epoch_xg=0, x_train=None, y_train=None,
-                     x_val=None, y_val=None, net_ref=None, net_lineup=None).items():
+                     x_val=None, y_val=None, net_ref=None, net_lineup=None,
+                     net_injury=None).items():
         if k not in st.session_state:
             st.session_state[k] = v
 _init_state()
@@ -251,14 +254,16 @@ dist_all, ang_all, gol_all, xg_all = generar_tiros(600)
 # HERO
 # ===================================================================
 st.markdown(styles.hero(n_tiros=600, target_acc=78), unsafe_allow_html=True)
+# Inject scroll+tab JS functions into parent window via isolated iframe
+components.html(styles.hero_js(), height=0)
 
 
 # ===================================================================
 # TABS
 # ===================================================================
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "Cómo funciona", "Los datos", "Entrenar la red",
-    "Simulador xG", "Árbitro IA", "Titular o Suplente", "Glosario",
+    "Simulador xG", "Árbitro IA", "Titular o Suplente", "¿Se lesiona?", "Glosario",
 ])
 
 
@@ -686,9 +691,9 @@ with tab6:
     with c2:
         st.markdown("#### Decisión del DT")
         lu_key = f"{goals_in}{assists_in}{pct_in}{mins_in}{cond_in}{edad_in}{p_tit:.4f}"
-        st.markdown(
+        components.html(
             styles.lineup_scene(is_tit, render_key=lu_key),
-            unsafe_allow_html=True,
+            height=400,
         )
 
     st.markdown("---")
@@ -715,9 +720,72 @@ with tab6:
 
 
 # ----------------------------------------------------------------
-# TAB 7 — GLOSARIO
+# TAB 7 — ¿SE LESIONA?
 # ----------------------------------------------------------------
 with tab7:
+    st.markdown(styles.section_head(
+        kicker="08 · Módulo",
+        title="¿Se va a lesionar?",
+        lead="La sobrecarga no se ve en el marcador, pero la red la detecta. "
+             "Cinco variables de carga y recuperación definen el riesgo muscular de un jugador."
+    ), unsafe_allow_html=True)
+
+    if st.session_state.net_injury is None:
+        with st.spinner("Entrenando modelo de lesiones…"):
+            st.session_state.net_injury = injury_model.entrenar_modelo_injury(
+                epochs=2000, lr=0.06)
+
+    net_inj = st.session_state.net_injury
+
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        st.markdown("#### Carga del jugador")
+        mins_inj   = st.slider("⏱ Minutos en los últimos 3 partidos",  0, 270, 210)
+        dias_inj   = st.slider("🩹 Días desde la última lesión",        0, 365, 45,
+                               help="0 = lesionado ayer · 365 = hace un año sin lesiones")
+        edad_inj   = st.slider("📅 Edad del jugador",                  17,  38,  28)
+        inten_inj  = st.slider("🏋 Intensidad de entrenamiento (1–10)", 1,  10,   7)
+        part_inj   = st.slider("📅 Partidos en los últimos 30 días",    0,  12,   6)
+
+    p_les = injury_model.predecir_lesion(
+        net_inj, mins_inj, dias_inj, edad_inj, inten_inj, part_inj)
+    is_inj = p_les >= 0.5
+
+    with c2:
+        st.markdown("#### Estado físico")
+        inj_key = f"{mins_inj}{dias_inj}{edad_inj}{inten_inj}{part_inj}{p_les:.4f}"
+        components.html(
+            styles.injury_scene(is_inj, render_key=inj_key),
+            height=400,
+        )
+
+    st.markdown("---")
+
+    c3, c4 = st.columns([1, 2])
+    with c3:
+        st.markdown(styles.result_box(
+            p_les,
+            verdict_high="🔴 Alto riesgo de lesión",
+            verdict_mid="⚠️ Zona de precaución",
+            verdict_low="🟢 Baja probabilidad",
+            label="P(lesión)",
+        ), unsafe_allow_html=True)
+
+    with c4:
+        factor = injury_model.factor_lesion(
+            mins_inj, dias_inj, edad_inj, inten_inj, part_inj)
+        st.info(f"📊 El factor que más eleva el riesgo es **{factor}**.")
+        st.markdown(
+            styles.injury_feature_table(
+                mins_inj, dias_inj, edad_inj, inten_inj, part_inj),
+            unsafe_allow_html=True,
+        )
+
+
+# ----------------------------------------------------------------
+# TAB 8 — GLOSARIO
+# ----------------------------------------------------------------
+with tab8:
     st.markdown(styles.section_head(
         kicker="07 · Glosario",
         title="Las palabras importantes.",
