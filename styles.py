@@ -172,6 +172,10 @@ code {
   overflow: hidden;
   isolation: isolate;
   border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 .xg-hero__pitch {
   position: absolute; inset: 0; z-index: -1;
@@ -225,12 +229,13 @@ code {
 }
 .xg-hero__sub {
   font-size: 19px; color: var(--text-2);
-  max-width: 580px; margin: 0 0 36px 0; line-height: 1.6;
+  max-width: 580px; margin: 0 auto 36px; line-height: 1.6;
 }
 
 /* CTA buttons */
 .xg-hero__cta {
   display: flex; gap: 14px; margin-bottom: 44px; flex-wrap: wrap;
+  justify-content: center;
 }
 .xg-cta {
   display: inline-flex; align-items: center; gap: 8px;
@@ -536,6 +541,36 @@ code {
 
 hr { border: none !important; border-top: 1px solid var(--border) !important; margin: 30px 0 !important; }
 .stMarkdown a { color: var(--acc-green); }
+
+/* ===========================================================
+   LINEUP SCENE — Titular / Suplente
+   =========================================================== */
+.xg-lineup-scene {
+  position: relative; height: 340px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  border: 1px solid var(--border); border-radius: 16px; overflow: hidden;
+  background: radial-gradient(ellipse at center, var(--glow,rgba(0,212,170,0.05)) 0%, transparent 65%);
+  transition: background 0.5s ease;
+}
+.lineup-fig-wrap { display: flex; align-items: center; justify-content: center; }
+.lineup-fig { width: 160px; height: 260px; }
+.lineup-badge {
+  margin-top: 12px; padding: 5px 20px; border-radius: 999px;
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em;
+  font-weight: 600; border: 1px solid; text-transform: uppercase;
+}
+.xg-lineup-table {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 14px; padding: 18px; margin-top: 16px;
+}
+.xg-lineup-table .lt-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+}
+.xg-lineup-table .lt-row:last-child { border-bottom: none; }
+.xg-lineup-table .lt-feat { color: var(--text-2); font-family: var(--font-mono); font-size: 12px; }
+.xg-lineup-table .lt-val  { color: var(--text-1); font-family: var(--font-mono); font-weight: 600; }
+.xg-lineup-table .lt-imp  { font-size: 13px; }
 </style>
 """
 
@@ -549,6 +584,22 @@ def inject_css() -> None:
 # ===================================================================
 def hero(n_tiros: int, target_acc: int = 78) -> str:
     return f"""
+<script>
+function xgEmpezar(){{
+  var el=document.querySelector('[data-baseweb="tab-list"]');
+  if(el){{el.scrollIntoView({{behavior:'smooth',block:'start'}});}}
+}}
+function xgSimulador(){{
+  var tabs=document.querySelectorAll('[data-baseweb="tab"]');
+  if(tabs&&tabs[3]){{
+    tabs[3].click();
+    setTimeout(function(){{
+      var tl=document.querySelector('[data-baseweb="tab-list"]');
+      if(tl)tl.scrollIntoView({{behavior:'smooth',block:'start'}});
+    }},200);
+  }}
+}}
+</script>
 <div class="xg-hero">
   <svg class="xg-hero__pitch" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
     <g fill="none" stroke="#00D4AA" stroke-width="1.4" stroke-opacity="0.5">
@@ -571,11 +622,11 @@ def hero(n_tiros: int, target_acc: int = 78) -> str:
     termine en el fondo del arco. Sin reglas. Sin fórmulas. Solo patrones.
   </p>
   <div class="xg-hero__cta">
-    <a class="xg-cta xg-cta--primary" href="#" onclick="window.scrollBy({{top:220,behavior:'smooth'}});return false;">
+    <a class="xg-cta xg-cta--primary" href="#" onclick="xgEmpezar();return false;">
       Empezar
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
     </a>
-    <a class="xg-cta xg-cta--ghost" href="#" onclick="window.scrollBy({{top:220,behavior:'smooth'}});return false;">
+    <a class="xg-cta xg-cta--ghost" href="#" onclick="xgSimulador();return false;">
       Ir directo al simulador
     </a>
   </div>
@@ -872,6 +923,144 @@ def referee_scene(vel: int, ball: bool, zona: str, minuto: int, score: int,
   </svg>
 </div>
 """
+
+
+# ===================================================================
+# GOAL CELEBRATION
+# ===================================================================
+def goal_celebration(proba: float) -> str:
+    """Confetti + GOOOL banner. Unique keyframe names per proba value so it always replays."""
+    if proba <= 0.5:
+        return ""
+    n = abs(hash(f"{proba:.5f}")) % 999983
+    rng_c = [
+        ("#00D4AA", "5", "50"),  ("FFD700", "8", "30"),  ("#FF4655", "6", "50"),
+        ("#5EE8C7", "7", "50"),  ("#FFFFFF", "5", "30"),  ("#00D4AA", "9", "50"),
+        ("#FFD700", "6", "30"),  ("#FF4655", "5", "50"),  ("#5EE8C7", "8", "30"),
+        ("#00D4AA", "7", "50"),  ("#FFD700", "5", "50"),  ("#FF4655", "9", "30"),
+        ("#5EE8C7", "6", "50"),  ("#FFFFFF", "8", "30"),  ("#00D4AA", "5", "50"),
+        ("#FFD700", "7", "50"),  ("#FF4655", "6", "30"),  ("#5EE8C7", "5", "50"),
+        ("#FFFFFF", "9", "30"),  ("#00D4AA", "6", "50"),
+    ]
+    positions = [5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,93,97]
+    delays    = [0,.08,.16,.24,.32,.1,.18,.26,.34,.05,.13,.21,.29,.37,.03,.11,.19,.27,.35,.07]
+    confetti  = "".join(
+        f'<div style="position:absolute;left:{pos}%;top:-12px;width:{w}px;height:{w}px;'
+        f'background:{col};border-radius:{br}%;opacity:1;'
+        f'animation:cFall{n} {1.4+d:.2f}s cubic-bezier(.25,1,.4,1) {d:.2f}s both;"></div>'
+        for (col, w, br), pos, d in zip(rng_c, positions, delays)
+    )
+    return f"""
+<style>
+@keyframes cFall{n}{{0%{{transform:translateY(0) rotate(0deg);opacity:1;}}100%{{transform:translateY(280px) rotate(540deg);opacity:0;}}}}
+@keyframes gPop{n}{{0%{{transform:scale(0) rotate(-12deg);opacity:0;}}55%{{transform:scale(1.22) rotate(4deg);opacity:1;}}78%{{transform:scale(.95);}}100%{{transform:scale(1) rotate(0deg);opacity:1;}}}}
+@keyframes gFlash{n}{{0%{{box-shadow:inset 0 0 0 0 rgba(0,212,170,0);}}35%{{box-shadow:inset 0 0 80px 0 rgba(0,212,170,0.45);}}100%{{box-shadow:inset 0 0 0 0 rgba(0,212,170,0);}}}}
+</style>
+<div style="position:relative;overflow:hidden;text-align:center;padding:28px 20px;border-radius:16px;
+background:rgba(0,212,170,0.07);border:1px solid rgba(0,212,170,0.3);margin:16px 0;
+animation:gFlash{n} 0.9s ease forwards;">
+  {confetti}
+  <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:54px;color:#00D4AA;
+    letter-spacing:-0.02em;line-height:1;text-shadow:0 0 40px rgba(0,212,170,0.9);
+    animation:gPop{n} 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.08s both;">
+    ⚽ ¡¡GOOOL!!
+  </div>
+  <div style="font-family:'JetBrains Mono',monospace;font-size:13px;
+    color:rgba(0,212,170,0.7);margin-top:10px;letter-spacing:0.1em;">
+    {int(proba*100)}% · La red lo vio venir
+  </div>
+</div>
+"""
+
+
+# ===================================================================
+# LINEUP SCENE
+# ===================================================================
+def lineup_scene(is_titular: bool, render_key: str = "") -> str:
+    """SVG player figure — stands up as TITULAR, sits as SUPLENTE. Animation retrtiggers per key."""
+    n = abs(hash(render_key or str(is_titular))) % 999983
+    color   = "#00D4AA" if is_titular else "#FF8C42"
+    badge   = "TITULAR"  if is_titular else "SUPLENTE"
+    bg      = "rgba(0,212,170,0.12)"  if is_titular else "rgba(255,140,66,0.12)"
+    glow    = "rgba(0,212,170,0.12)"  if is_titular else "rgba(255,140,66,0.10)"
+    dy      = "-18px" if is_titular else "18px"
+
+    if is_titular:
+        figure = f"""
+        <circle cx="100" cy="36" r="18" fill="none" stroke="{color}" stroke-width="1.8"/>
+        <path d="M78 56 L64 82 L80 80 L100 175 L120 80 L136 82 L122 56 Z"
+              fill="{bg}" stroke="{color}" stroke-width="1.6"/>
+        <text x="100" y="126" text-anchor="middle" fill="{color}" font-size="20"
+              font-weight="900" font-family="Outfit">11</text>
+        <line x1="78" y1="68" x2="46" y2="108" stroke="{color}" stroke-width="1.8"/>
+        <line x1="122" y1="68" x2="154" y2="108" stroke="{color}" stroke-width="1.8"/>
+        <line x1="90" y1="175" x2="83" y2="255" stroke="{color}" stroke-width="1.8"/>
+        <line x1="110" y1="175" x2="117" y2="255" stroke="{color}" stroke-width="1.8"/>
+        """
+    else:
+        figure = f"""
+        <circle cx="100" cy="36" r="18" fill="none" stroke="{color}" stroke-width="1.8"/>
+        <path d="M80 56 L68 78 L82 76 L100 148 L118 76 L132 78 L120 56 Z"
+              fill="{bg}" stroke="{color}" stroke-width="1.6"/>
+        <text x="100" y="108" text-anchor="middle" fill="{color}" font-size="10"
+              font-family="JetBrains Mono" letter-spacing="0.05em">VEST</text>
+        <line x1="80" y1="66" x2="58" y2="92" stroke="{color}" stroke-width="1.8"/>
+        <line x1="58" y1="92" x2="62" y2="152" stroke="{color}" stroke-width="1.8"/>
+        <line x1="120" y1="66" x2="142" y2="92" stroke="{color}" stroke-width="1.8"/>
+        <line x1="142" y1="92" x2="138" y2="152" stroke="{color}" stroke-width="1.8"/>
+        <line x1="92" y1="148" x2="58" y2="192" stroke="{color}" stroke-width="1.8"/>
+        <line x1="58" y1="192" x2="36" y2="182" stroke="{color}" stroke-width="1.8"/>
+        <line x1="108" y1="148" x2="142" y2="192" stroke="{color}" stroke-width="1.8"/>
+        <line x1="142" y1="192" x2="164" y2="182" stroke="{color}" stroke-width="1.8"/>
+        """
+
+    return f"""
+<style>
+@keyframes pEnter{n}{{
+  0%{{opacity:0;transform:translateY({dy}) scale(0.88);}}
+  100%{{opacity:1;transform:translateY(0) scale(1);}}
+}}
+</style>
+<div class="xg-lineup-scene" style="--glow:{glow};">
+  <div class="lineup-fig-wrap"
+       style="animation:pEnter{n} 0.55s cubic-bezier(0.34,1.56,0.64,1) both;">
+    <svg viewBox="0 0 200 270" class="lineup-fig">
+      {figure}
+    </svg>
+  </div>
+  <div class="lineup-badge"
+       style="background:{bg};border-color:{color};color:{color};">
+    {badge}
+  </div>
+</div>
+"""
+
+
+def lineup_feature_table(goals: float, assists: float, pct: float,
+                         mins: float, cond: float, edad: float) -> str:
+    """Table showing each feature value and its rough impact on the titular decision."""
+    def imp(score: float) -> str:
+        if score > 0.65: return "🟢 Alto"
+        if score > 0.35: return "🟡 Medio"
+        return "🔴 Bajo"
+
+    rows = [
+        ("Goles / 90 min",           f"{goals:.2f}",    imp(goals / 1.5)),
+        ("Asistencias / 90 min",     f"{assists:.2f}",  imp(assists / 1.0)),
+        ("Precisión de pases",       f"{pct:.0f}%",     imp((pct-50)/50)),
+        ("Minutos últimos 3 partidos", f"{int(mins)}'", imp(mins/270)),
+        ("Condición física (1–10)",  f"{cond:.1f}",     imp((cond-1)/9)),
+        ("Edad",                     f"{int(edad)} años", imp(max(0.0, 1-abs(edad-26)/10))),
+    ]
+    rows_html = "".join(
+        f'<div class="lt-row">'
+        f'<span class="lt-feat">{feat}</span>'
+        f'<span class="lt-val">{val}</span>'
+        f'<span class="lt-imp">{imp_txt}</span>'
+        f'</div>'
+        for feat, val, imp_txt in rows
+    )
+    return f'<div class="xg-lineup-table">{rows_html}</div>'
 
 
 # ===================================================================

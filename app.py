@@ -12,6 +12,7 @@ from plotly.subplots import make_subplots
 from mlp import MLP
 import ref_model
 import styles
+import lineup_model
 
 
 # ===================================================================
@@ -55,8 +56,9 @@ def generar_tiros(n: int = 600, seed: int = 42) -> tuple:
     rng = np.random.default_rng(seed)
     distancia = rng.uniform(4, 36, n)
     angulo    = rng.uniform(3, 87, n)
-    xg = 0.85 * np.exp(-distancia / 9.0) * (angulo / 90.0) ** 0.45
-    xg = np.clip(xg, 0.02, 0.80)
+    # Boosted formula → ~27% of shots become goals (más realista para el simulador)
+    raw = 1.1 * np.exp(-distancia / 10.0) * (angulo / 90.0) ** 0.32
+    xg  = np.clip(raw, 0.07, 0.88)
     gol = (rng.uniform(0, 1, n) < xg).astype(float)
     return distancia, angulo, gol, xg
 
@@ -237,7 +239,7 @@ GLOSARIO = [
 # ===================================================================
 def _init_state():
     for k, v in dict(mlp_xg=None, epoch_xg=0, x_train=None, y_train=None,
-                     x_val=None, y_val=None, net_ref=None).items():
+                     x_val=None, y_val=None, net_ref=None, net_lineup=None).items():
         if k not in st.session_state:
             st.session_state[k] = v
 _init_state()
@@ -254,9 +256,9 @@ st.markdown(styles.hero(n_tiros=600, target_acc=78), unsafe_allow_html=True)
 # ===================================================================
 # TABS
 # ===================================================================
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "Cómo funciona", "Los datos", "Entrenar la red",
-    "Simulador xG", "Árbitro IA", "Glosario",
+    "Simulador xG", "Árbitro IA", "Titular o Suplente", "Glosario",
 ])
 
 
@@ -542,27 +544,24 @@ with tab4:
             else:
                 st.error("🔴 **Chance baja — buscá mejor posición.**")
 
+            # Goal celebration animation
+            st.markdown(styles.goal_celebration(proba), unsafe_allow_html=True)
+
         with c_pitch:
             fig_sim = heatmap_xg(mlp, height=500)
-
             x_t, y_t = tiros_a_xy(np.array([dist_sim]), np.array([ang_sim]))
+            cx, cy = float(x_t[0]), float(y_t[0])
 
-            # Outer glow ring
+            # Green glowing dot — layered circles for glow effect
+            for sz, alpha in [(54, 0.07), (38, 0.14), (24, 0.28)]:
+                fig_sim.add_trace(go.Scatter(
+                    x=[cx], y=[cy], mode="markers",
+                    marker=dict(color=f"rgba(0,212,170,{alpha})", size=sz, symbol="circle"),
+                    showlegend=False, hoverinfo="skip",
+                ))
             fig_sim.add_trace(go.Scatter(
-                x=x_t, y=y_t, mode="markers",
-                marker=dict(color="rgba(255,215,0,0.18)", size=48, symbol="circle"),
-                showlegend=False, hoverinfo="skip",
-            ))
-            # Mid ring
-            fig_sim.add_trace(go.Scatter(
-                x=x_t, y=y_t, mode="markers",
-                marker=dict(color="rgba(255,215,0,0.35)", size=30, symbol="circle"),
-                showlegend=False, hoverinfo="skip",
-            ))
-            # Core marker
-            fig_sim.add_trace(go.Scatter(
-                x=x_t, y=y_t, mode="markers+text",
-                marker=dict(color=ACC_Y, size=14, symbol="circle",
+                x=[cx], y=[cy], mode="markers+text",
+                marker=dict(color=ACC_G, size=13, symbol="circle",
                             line=dict(color="white", width=2.5)),
                 text=[f" {dist_sim}m · {ang_sim}°"],
                 textposition="middle right",
@@ -570,19 +569,6 @@ with tab4:
                 showlegend=False,
                 hovertemplate=f"Distancia: {dist_sim} m<br>Ángulo: {ang_sim}°<br>xG: {proba:.1%}<extra></extra>",
             ))
-            # Crosshair lines
-            gap = 1.5
-            arm = 4.0
-            cx, cy = float(x_t[0]), float(y_t[0])
-            for x0, y0, x1, y1 in [
-                (cx - gap - arm, cy, cx - gap, cy),
-                (cx + gap, cy, cx + gap + arm, cy),
-                (cx, cy - gap - arm, cx, cy - gap),
-                (cx, cy + gap, cx, cy + gap + arm),
-            ]:
-                fig_sim.add_shape(type="line", x0=x0, y0=y0, x1=x1, y1=y1,
-                                  line=dict(color=ACC_Y, width=1.8))
-
             fig_sim.update_layout(title=dict(text="Tu posición en la cancha",
                                              font=dict(color=TEXT_1, family="Outfit", size=16)))
             st.plotly_chart(fig_sim, use_container_width=True)
@@ -666,9 +652,72 @@ with tab5:
 
 
 # ----------------------------------------------------------------
-# TAB 6 — GLOSARIO
+# TAB 6 — TITULAR O SUPLENTE
 # ----------------------------------------------------------------
 with tab6:
+    st.markdown(styles.section_head(
+        kicker="07 · Módulo",
+        title="¿Titular o suplente?",
+        lead="El DT también usa datos. Esta red analiza el rendimiento reciente de un "
+             "jugador y decide si arranca desde el primer minuto o se queda en el banco."
+    ), unsafe_allow_html=True)
+
+    if st.session_state.net_lineup is None:
+        with st.spinner("Entrenando modelo de alineación…"):
+            st.session_state.net_lineup = lineup_model.entrenar_modelo_lineup(
+                epochs=2000, lr=0.06)
+
+    net_lu = st.session_state.net_lineup
+
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        st.markdown("#### Stats del jugador")
+        goals_in   = st.slider("⚽ Goles por 90 min",        0.0, 1.5, 0.6, step=0.05)
+        assists_in = st.slider("🎯 Asistencias por 90 min",  0.0, 1.0, 0.3, step=0.05)
+        pct_in     = st.slider("🎯 Precisión de pases (%)",  50,  100, 82)
+        mins_in    = st.slider("⏱ Minutos últimos 3 partidos", 0, 270, 200)
+        cond_in    = st.slider("💪 Condición física (1–10)",  1,  10,  7)
+        edad_in    = st.slider("📅 Edad del jugador",        17,  38,  24)
+
+    p_tit = lineup_model.predecir_lineup(
+        net_lu, goals_in, assists_in, pct_in, mins_in, cond_in, edad_in)
+    is_tit = p_tit >= 0.5
+
+    with c2:
+        st.markdown("#### Decisión del DT")
+        lu_key = f"{goals_in}{assists_in}{pct_in}{mins_in}{cond_in}{edad_in}{p_tit:.4f}"
+        st.markdown(
+            styles.lineup_scene(is_tit, render_key=lu_key),
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("---")
+
+    c3, c4 = st.columns([1, 2])
+    with c3:
+        st.markdown(styles.result_box(
+            p_tit,
+            verdict_high="🟢 Sale de titular",
+            verdict_mid="Decisión pareja",
+            verdict_low="🟠 Al banco",
+            label="P(titular)",
+        ), unsafe_allow_html=True)
+
+    with c4:
+        factor = lineup_model.factor_lineup(
+            goals_in, assists_in, pct_in, mins_in, cond_in, edad_in)
+        st.info(f"📊 Lo que más define la decisión es **{factor}**.")
+        st.markdown(
+            styles.lineup_feature_table(
+                goals_in, assists_in, pct_in, mins_in, cond_in, edad_in),
+            unsafe_allow_html=True,
+        )
+
+
+# ----------------------------------------------------------------
+# TAB 7 — GLOSARIO
+# ----------------------------------------------------------------
+with tab7:
     st.markdown(styles.section_head(
         kicker="07 · Glosario",
         title="Las palabras importantes.",
