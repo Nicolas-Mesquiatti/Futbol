@@ -244,10 +244,18 @@ GLOSARIO = [
 def _init_state():
     for k, v in dict(mlp_xg=None, epoch_xg=0, x_train=None, y_train=None,
                      x_val=None, y_val=None, net_ref=None, net_lineup=None,
-                     net_injury=None, just_initialized=False).items():
+                     net_injury=None, just_initialized=False,
+                     nav_tab="", _last_tab_nav="").items():
         if k not in st.session_state:
             st.session_state[k] = v
 _init_state()
+
+# Navegación via query params (seteados por hero_js cuando el usuario clickea los botones)
+_tab_nav = st.query_params.get("tab", "")
+if _tab_nav != st.session_state._last_tab_nav:
+    st.session_state._last_tab_nav = _tab_nav
+    if _tab_nav:
+        st.session_state.nav_tab = _tab_nav
 
 dist_all, ang_all, gol_all, xg_all = generar_tiros(800)
 
@@ -256,24 +264,7 @@ dist_all, ang_all, gol_all, xg_all = generar_tiros(800)
 # HERO
 # ===================================================================
 st.markdown(styles.hero(n_tiros=800, target_acc=85), unsafe_allow_html=True)
-# Inject scroll+tab JS functions into parent window via isolated iframe
 components.html(styles.hero_js(), height=0)
-
-# Scroll-to-training fix: after Inicializar, rerun fires and we re-click the correct tab
-if st.session_state.just_initialized:
-    st.session_state.just_initialized = False
-    components.html("""<script>
-setTimeout(function() {
-  var tabs = parent.document.querySelectorAll('[data-baseweb="tab"]');
-  if (tabs && tabs.length > 3) {
-    tabs[3].click();  // "Entrenar la red" = index 3 with Introducción tab added
-    setTimeout(function() {
-      var el = parent.document.querySelector('[data-testid="stTabs"]');
-      if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
-    }, 250);
-  }
-}, 150);
-</script>""", height=0)
 
 
 # ===================================================================
@@ -284,12 +275,44 @@ tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "Simulador xG", "Árbitro IA", "Titular o Suplente", "¿Se lesiona?", "Glosario",
 ])
 
+# JS de navegación: hero buttons (via query param) y Inicializar (just_initialized)
+_nav = st.session_state.get("nav_tab", "")
+if _nav:
+    st.session_state.nav_tab = ""
+    _idx = {"intro": 0, "simulador": 3}.get(_nav, 0)
+    components.html(f"""<script>
+setTimeout(function() {{
+  var tabs = parent.document.querySelectorAll('[data-baseweb="tab"]');
+  if (tabs.length > {_idx}) {{
+    tabs[{_idx}].click();
+    setTimeout(function() {{
+      var el = parent.document.querySelector('[data-testid="stTabs"]');
+      if (el) el.scrollIntoView({{behavior:'smooth', block:'start'}});
+    }}, 200);
+  }}
+}}, 150);
+</script>""", height=0)
+elif st.session_state.just_initialized:
+    st.session_state.just_initialized = False
+    components.html("""<script>
+setTimeout(function() {
+  var tabs = parent.document.querySelectorAll('[data-baseweb="tab"]');
+  if (tabs.length > 3) {
+    tabs[3].click();
+    setTimeout(function() {
+      var el = parent.document.querySelector('[data-testid="stTabs"]');
+      if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    }, 250);
+  }
+}, 150);
+</script>""", height=0)
+
 
 # ----------------------------------------------------------------
 # TAB 0 — INTRODUCCIÓN
 # ----------------------------------------------------------------
 with tab0:
-    st.markdown(styles.intro_tab_content(), unsafe_allow_html=True)
+    components.html(styles.intro_tab_content(), height=960)
 
 
 # ----------------------------------------------------------------
@@ -756,8 +779,7 @@ with tab6:
 
     if st.session_state.net_lineup is None:
         with st.spinner("Entrenando modelo de alineación…"):
-            st.session_state.net_lineup = lineup_model.entrenar_modelo_lineup(
-                epochs=2000, lr=0.06)
+            st.session_state.net_lineup = lineup_model.entrenar_modelo_lineup()
 
     net_lu = st.session_state.net_lineup
 

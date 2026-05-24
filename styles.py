@@ -574,28 +574,17 @@ def inject_css() -> None:
 # HERO
 # ===================================================================
 def hero_js() -> str:
-    """Injects scroll+tab helper functions into the parent Streamlit page.
+    """Navega via query params para que Python active el tab correcto.
     Render via: st.components.v1.html(styles.hero_js(), height=0)
-    Tab indices (0-based): 0=Introducción, 1=Cómo funciona, 2=Los datos,
-    3=Entrenar la red, 4=Simulador xG, 5=Árbitro IA, 6=Titular o Suplente,
-    7=¿Se lesiona?, 8=Glosario
     """
     return """<script>
-// "Empezar →": scroll to the Streamlit tabs section
+// "Empezar →": navega a ?tab=intro → Python lee el param y activa el tab
 parent.xgEmpezar = function() {
-  var el = parent.document.querySelector('[data-testid="stTabs"]');
-  if (el) { el.scrollIntoView({behavior: 'smooth', block: 'start'}); }
+  parent.location.search = '?tab=intro';
 };
-// "Ir directo al simulador": activate "Entrenar la red" tab (index 3) and scroll
+// "Ir directo al simulador": navega a ?tab=simulador → activa Entrenar la red
 parent.xgSimulador = function() {
-  var tabs = parent.document.querySelectorAll('[data-baseweb="tab"]');
-  if (tabs && tabs.length > 3) {
-    tabs[3].click();
-    setTimeout(function() {
-      var el = parent.document.querySelector('[data-testid="stTabs"]');
-      if (el) el.scrollIntoView({behavior: 'smooth', block: 'start'});
-    }, 200);
-  }
+  parent.location.search = '?tab=simulador';
 };
 </script>"""
 
@@ -654,134 +643,149 @@ def hero(n_tiros: int, target_acc: int = 78) -> str:
 # INTRO TAB CONTENT
 # ===================================================================
 def intro_tab_content() -> str:
-    """Static HTML for the Introducción tab. SVG diagram 2→2→1 + plain Spanish explanation."""
-    return """
-<div style="max-width:960px;margin:0 auto;">
-
-  <!-- Header -->
-  <div class="xg-shead">
-    <div class="kk">00 · Introducción</div>
-    <h2 class="tt">¿Qué es una red neuronal?</h2>
-    <p class="ll">Sin matemáticas complejas. Sin jerga innecesaria. Solo la intuición detrás
-    de la tecnología que usa el fútbol moderno para tomar decisiones.</p>
-  </div>
+    """HTML doc completo para components.html(height=960).
+    SVG 2→2→1 + explicación en español. Sin st.markdown para evitar sanitización."""
+    return """<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #0F1923;
+  color: #FFFFFF;
+  font-family: 'Inter', system-ui, sans-serif;
+  padding: 8px 12px 32px;
+  overflow-x: hidden;
+}
+.kicker {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: #00D4AA; margin-bottom: 10px;
+}
+.title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700; font-size: 36px; letter-spacing: -0.025em;
+  color: #FFFFFF; margin: 0 0 10px;
+}
+.lead { color: #8A9BB0; font-size: 15px; line-height: 1.6; max-width: 640px; margin-bottom: 28px; }
+.diagram-box {
+  background: #1A1A2E; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px; padding: 28px 24px; margin-bottom: 24px; text-align: center;
+}
+.diagram-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  color: #8A9BB0; margin-bottom: 18px;
+}
+.cards {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px;
+}
+@media (max-width: 600px) { .cards { grid-template-columns: 1fr; } }
+.card {
+  background: #1A1A2E; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px; padding: 20px;
+}
+.card-kicker {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px;
+}
+.card p { font-size: 14px; color: #FFFFFF; line-height: 1.6; margin: 0 0 12px; }
+.formula {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #5EE8C7;
+  background: rgba(0,0,0,0.3); padding: 8px 12px; border-radius: 6px;
+}
+.football-box {
+  background: linear-gradient(135deg, rgba(0,212,170,0.06), transparent);
+  border: 1px solid rgba(0,212,170,0.2); border-radius: 16px; padding: 28px 32px;
+}
+.football-box .kicker { margin-bottom: 14px; }
+.football-box p { font-size: 15px; line-height: 1.65; color: #FFFFFF; margin-bottom: 12px; }
+.football-box p:last-child { color: #8A9BB0; font-size: 14px; margin-bottom: 0; }
+</style>
+</head>
+<body>
+  <div class="kicker">00 · Introducción</div>
+  <h2 class="title">¿Qué es una red neuronal?</h2>
+  <p class="lead">Sin matemáticas complejas. Sin jerga innecesaria. Solo la intuición detrás
+  de la tecnología que usa el fútbol moderno para tomar decisiones.</p>
 
   <!-- SVG diagram -->
-  <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:16px;
-       padding:32px 24px;margin:0 0 32px;text-align:center;">
-    <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.15em;
-         text-transform:uppercase;color:var(--text-2);margin-bottom:20px;">
-      Arquitectura MLP · 2 → 2 → 1
-    </div>
-    <svg viewBox="0 0 560 200" width="100%" style="max-width:560px;overflow:visible;">
+  <div class="diagram-box">
+    <div class="diagram-label">Arquitectura MLP · 2 → 2 → 1</div>
+    <svg viewBox="0 0 560 210" width="100%" style="max-width:540px;display:block;margin:0 auto;overflow:visible;">
       <!-- connections input→hidden -->
       <line x1="100" y1="70"  x2="280" y2="70"  stroke="rgba(255,255,255,0.10)" stroke-width="1.5"/>
-      <line x1="100" y1="70"  x2="280" y2="130" stroke="rgba(255,255,255,0.10)" stroke-width="1.5"/>
-      <line x1="100" y1="130" x2="280" y2="70"  stroke="rgba(255,255,255,0.10)" stroke-width="1.5"/>
-      <line x1="100" y1="130" x2="280" y2="130" stroke="rgba(255,255,255,0.10)" stroke-width="1.5"/>
+      <line x1="100" y1="70"  x2="280" y2="140" stroke="rgba(255,255,255,0.10)" stroke-width="1.5"/>
+      <line x1="100" y1="140" x2="280" y2="70"  stroke="rgba(255,255,255,0.10)" stroke-width="1.5"/>
+      <line x1="100" y1="140" x2="280" y2="140" stroke="rgba(255,255,255,0.10)" stroke-width="1.5"/>
       <!-- connections hidden→output -->
-      <line x1="280" y1="70"  x2="460" y2="100" stroke="rgba(94,232,199,0.22)" stroke-width="1.5"/>
-      <line x1="280" y1="130" x2="460" y2="100" stroke="rgba(94,232,199,0.22)" stroke-width="1.5"/>
+      <line x1="280" y1="70"  x2="460" y2="105" stroke="rgba(94,232,199,0.25)" stroke-width="1.5"/>
+      <line x1="280" y1="140" x2="460" y2="105" stroke="rgba(94,232,199,0.25)" stroke-width="1.5"/>
 
       <!-- input nodes -->
-      <circle cx="100" cy="70"  r="18" fill="#00D4AA" fill-opacity="0.85"/>
-      <circle cx="100" cy="130" r="18" fill="#00D4AA" fill-opacity="0.85"/>
-      <text x="100" y="74"  text-anchor="middle" fill="#0A1018" font-size="9" font-weight="700" font-family="JetBrains Mono">dist</text>
-      <text x="100" y="134" text-anchor="middle" fill="#0A1018" font-size="9" font-weight="700" font-family="JetBrains Mono">ang</text>
+      <circle cx="100" cy="70"  r="20" fill="#00D4AA" opacity="0.88"/>
+      <circle cx="100" cy="140" r="20" fill="#00D4AA" opacity="0.88"/>
+      <text x="100" y="75"  text-anchor="middle" fill="#0A1018" font-size="10" font-weight="700" font-family="JetBrains Mono, monospace">dist</text>
+      <text x="100" y="145" text-anchor="middle" fill="#0A1018" font-size="10" font-weight="700" font-family="JetBrains Mono, monospace">ang</text>
 
       <!-- hidden nodes -->
-      <circle cx="280" cy="70"  r="18" fill="#5EE8C7" fill-opacity="0.85"/>
-      <circle cx="280" cy="130" r="18" fill="#5EE8C7" fill-opacity="0.85"/>
-      <text x="280" y="74"  text-anchor="middle" fill="#0A1018" font-size="9" font-weight="700" font-family="JetBrains Mono">tanh</text>
-      <text x="280" y="134" text-anchor="middle" fill="#0A1018" font-size="9" font-weight="700" font-family="JetBrains Mono">tanh</text>
+      <circle cx="280" cy="70"  r="20" fill="#5EE8C7" opacity="0.88"/>
+      <circle cx="280" cy="140" r="20" fill="#5EE8C7" opacity="0.88"/>
+      <text x="280" y="75"  text-anchor="middle" fill="#0A1018" font-size="10" font-weight="700" font-family="JetBrains Mono, monospace">tanh</text>
+      <text x="280" y="145" text-anchor="middle" fill="#0A1018" font-size="10" font-weight="700" font-family="JetBrains Mono, monospace">tanh</text>
 
       <!-- output node -->
-      <circle cx="460" cy="100" r="22" fill="#FFD700" fill-opacity="0.9"/>
-      <text x="460" y="97"  text-anchor="middle" fill="#0A1018" font-size="9" font-weight="700" font-family="JetBrains Mono">σ</text>
-      <text x="460" y="109" text-anchor="middle" fill="#0A1018" font-size="8" font-weight="600" font-family="JetBrains Mono">xG</text>
+      <circle cx="460" cy="105" r="24" fill="#FFD700" opacity="0.92"/>
+      <text x="460" y="102" text-anchor="middle" fill="#0A1018" font-size="13" font-weight="700" font-family="JetBrains Mono, monospace">σ</text>
+      <text x="460" y="116" text-anchor="middle" fill="#0A1018" font-size="9"  font-weight="600" font-family="JetBrains Mono, monospace">xG</text>
 
       <!-- weight labels -->
-      <text x="190" y="58"  text-anchor="middle" fill="rgba(255,255,255,0.35)" font-size="9" font-family="JetBrains Mono">w₁</text>
-      <text x="190" y="148" text-anchor="middle" fill="rgba(255,255,255,0.35)" font-size="9" font-family="JetBrains Mono">w₂</text>
-      <text x="370" y="82"  text-anchor="middle" fill="rgba(94,232,199,0.5)"  font-size="9" font-family="JetBrains Mono">w₃</text>
+      <text x="188" y="55"  text-anchor="middle" fill="rgba(255,255,255,0.38)" font-size="10" font-family="JetBrains Mono, monospace">w₁</text>
+      <text x="188" y="162" text-anchor="middle" fill="rgba(255,255,255,0.38)" font-size="10" font-family="JetBrains Mono, monospace">w₄</text>
+      <text x="372" y="86"  text-anchor="middle" fill="rgba(94,232,199,0.55)"  font-size="10" font-family="JetBrains Mono, monospace">w₅</text>
 
-      <!-- layer labels -->
-      <text x="100" y="168" text-anchor="middle" fill="rgba(255,255,255,0.30)" font-size="10" font-family="JetBrains Mono">Entrada</text>
-      <text x="100" y="180" text-anchor="middle" fill="#00D4AA"                font-size="9"  font-family="JetBrains Mono">2 feat</text>
-      <text x="280" y="168" text-anchor="middle" fill="rgba(255,255,255,0.30)" font-size="10" font-family="JetBrains Mono">Oculta</text>
-      <text x="280" y="180" text-anchor="middle" fill="#5EE8C7"                font-size="9"  font-family="JetBrains Mono">2n · tanh</text>
-      <text x="460" y="168" text-anchor="middle" fill="rgba(255,255,255,0.30)" font-size="10" font-family="JetBrains Mono">Salida</text>
-      <text x="460" y="180" text-anchor="middle" fill="#FFD700"                font-size="9"  font-family="JetBrains Mono">1 out · σ</text>
+      <!-- arrows at edges -->
+      <polygon points="258,66 272,70 258,74" fill="rgba(255,255,255,0.18)"/>
+      <polygon points="258,136 272,140 258,144" fill="rgba(255,255,255,0.18)"/>
+      <polygon points="436,102 450,105 436,108" fill="rgba(94,232,199,0.45)"/>
 
-      <!-- arrows -->
-      <polygon points="270,66 282,70 270,74" fill="rgba(255,255,255,0.15)"/>
-      <polygon points="270,126 282,130 270,134" fill="rgba(255,255,255,0.15)"/>
-      <polygon points="450,97 462,100 450,103" fill="rgba(94,232,199,0.4)"/>
+      <!-- layer labels below -->
+      <text x="100" y="178" text-anchor="middle" fill="rgba(255,255,255,0.32)" font-size="10" font-family="JetBrains Mono, monospace">Entrada</text>
+      <text x="100" y="192" text-anchor="middle" fill="#00D4AA"                font-size="9"  font-family="JetBrains Mono, monospace">2 features</text>
+      <text x="280" y="178" text-anchor="middle" fill="rgba(255,255,255,0.32)" font-size="10" font-family="JetBrains Mono, monospace">Capa oculta</text>
+      <text x="280" y="192" text-anchor="middle" fill="#5EE8C7"                font-size="9"  font-family="JetBrains Mono, monospace">2 neuronas · tanh</text>
+      <text x="460" y="178" text-anchor="middle" fill="rgba(255,255,255,0.32)" font-size="10" font-family="JetBrains Mono, monospace">Salida</text>
+      <text x="460" y="192" text-anchor="middle" fill="#FFD700"                font-size="9"  font-family="JetBrains Mono, monospace">1 neurona · σ</text>
     </svg>
   </div>
 
   <!-- Concept cards -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:32px;">
-
-    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:22px;">
-      <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;
-           color:var(--acc-green);margin-bottom:10px;">Neurona</div>
-      <p style="color:var(--text-1);font-size:14px;line-height:1.6;margin:0 0 10px;">
-        Cada neurona recibe números, los combina con sus <strong>pesos</strong>, y pasa el resultado por una función
-        no lineal. Sola no hace gran cosa. Junto a otras, reconoce patrones.
-      </p>
-      <div style="font-family:var(--font-mono);font-size:12px;color:var(--acc-green-2);
-           background:rgba(0,0,0,0.3);padding:8px 12px;border-radius:6px;">
-        a = tanh(w₁·x₁ + w₂·x₂ + b)
-      </div>
+  <div class="cards">
+    <div class="card">
+      <div class="card-kicker" style="color:#00D4AA;">Neurona</div>
+      <p>Cada neurona recibe números, los combina con sus <strong>pesos</strong> y los pasa por una función no lineal. Sola no hace gran cosa. Junto a otras, reconoce patrones.</p>
+      <div class="formula">a = tanh(w₁·x₁ + w₂·x₂ + b)</div>
     </div>
-
-    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:22px;">
-      <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;
-           color:var(--acc-yellow);margin-bottom:10px;">Backpropagation</div>
-      <p style="color:var(--text-1);font-size:14px;line-height:1.6;margin:0 0 10px;">
-        La red adivina un resultado. Si se equivoca, el error viaja hacia atrás por la red y cada
-        peso recibe su cuota de culpa. Así aprende: ajustando un poco a la vez.
-      </p>
-      <div style="font-family:var(--font-mono);font-size:12px;color:var(--acc-green-2);
-           background:rgba(0,0,0,0.3);padding:8px 12px;border-radius:6px;">
-        w ← w − α · ∂L/∂w
-      </div>
+    <div class="card">
+      <div class="card-kicker" style="color:#FFD700;">Backpropagation</div>
+      <p>La red adivina. Si se equivoca, el error viaja hacia atrás y cada peso recibe su cuota de culpa. Así aprende: ajustando un poquito a la vez, epoch tras epoch.</p>
+      <div class="formula">w ← w − α · ∂L/∂w</div>
     </div>
-
-    <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:22px;">
-      <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;
-           color:var(--acc-red);margin-bottom:10px;">Sigmoid σ</div>
-      <p style="color:var(--text-1);font-size:14px;line-height:1.6;margin:0 0 10px;">
-        La capa de salida usa sigmoid, que aplasta cualquier número al rango [0, 1].
-        Perfecto para decir: "hay un 73% de probabilidad de gol".
-      </p>
-      <div style="font-family:var(--font-mono);font-size:12px;color:var(--acc-green-2);
-           background:rgba(0,0,0,0.3);padding:8px 12px;border-radius:6px;">
-        σ(z) = 1 / (1 + e⁻ᶻ)
-      </div>
+    <div class="card">
+      <div class="card-kicker" style="color:#FF4655;">Sigmoid σ</div>
+      <p>La última capa usa sigmoid: aplasta cualquier número al rango [0, 1]. Perfecto para decir "hay un 73% de probabilidad de gol" en lugar de un número sin escala.</p>
+      <div class="formula">σ(z) = 1 / (1 + e⁻ᶻ)</div>
     </div>
   </div>
 
   <!-- Football application -->
-  <div style="background:linear-gradient(135deg,rgba(0,212,170,0.06),rgba(0,0,0,0));
-       border:1px solid rgba(0,212,170,0.2);border-radius:16px;padding:28px 32px;margin-bottom:16px;">
-    <div style="font-family:var(--font-mono);font-size:11px;letter-spacing:0.15em;text-transform:uppercase;
-         color:var(--acc-green);margin-bottom:14px;">¿Por qué el fútbol?</div>
-    <p style="color:var(--text-1);font-size:15px;line-height:1.65;margin:0 0 14px;">
-      El fútbol genera millones de eventos medibles por temporada: tiros, pases, presiones, distancias.
-      Cada tiro tiene dos coordenadas simples —distancia y ángulo— y un resultado binario: gol o no gol.
-      Es el problema de entrenamiento ideal para un MLP.
-    </p>
-    <p style="color:var(--text-2);font-size:14px;line-height:1.6;margin:0;">
-      Clubes como Liverpool, Bayern o Brighton usan redes neuronales para evaluar jugadores,
-      diseñar presiones y predecir lesiones. Esta app replica, en pequeño, la misma lógica que usan esos equipos.
-      La diferencia: acá podés ver cada peso ajustarse en tiempo real.
-    </p>
+  <div class="football-box">
+    <div class="kicker">¿Por qué el fútbol?</div>
+    <p>El fútbol genera millones de eventos medibles por temporada. Cada tiro tiene dos coordenadas —distancia y ángulo— y un resultado binario: gol o no gol. Es el dataset ideal para entrenar un MLP desde cero.</p>
+    <p>Clubes como Liverpool, Bayern o Brighton usan redes neuronales para evaluar jugadores, anticipar lesiones y diseñar esquemas tácticos. Esta app replica esa lógica en pequeño — con la diferencia de que acá podés ver cada peso ajustarse en tiempo real.</p>
   </div>
-
-</div>
-"""
+</body></html>"""
 
 
 # ===================================================================

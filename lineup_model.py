@@ -8,7 +8,7 @@ import numpy as np
 from mlp import MLP
 
 
-def generar_jugadores(n: int = 1000, seed: int = 99) -> tuple:
+def generar_jugadores(n: int = 1200, seed: int = 99) -> tuple:
     rng = np.random.default_rng(seed)
     goals   = rng.uniform(0.0, 1.5, n)
     assists = rng.uniform(0.0, 1.0, n)
@@ -17,17 +17,23 @@ def generar_jugadores(n: int = 1000, seed: int = 99) -> tuple:
     cond    = rng.uniform(1.0, 10.0, n)
     edad    = rng.uniform(17.0, 38.0, n)
 
-    # Balanced 4/6 criteria: softer thresholds; meeting 4+ = titular.
-    ok_goals   = (goals   >= 0.25).astype(float)
-    ok_assists = (assists >= 0.20).astype(float)
-    ok_pct     = (pct     >= 68.0).astype(float)
-    ok_mins    = (mins    >= 120.0).astype(float)
-    ok_cond    = (cond    >= 5.0).astype(float)
-    ok_age     = ((edad >= 20.0) & (edad <= 34.0)).astype(float)
-    n_ok = ok_goals + ok_assists + ok_pct + ok_mins + ok_cond + ok_age
+    # Age score: peaks at 26, falls off on both sides; 0 outside [14, 38]
+    age_score = np.clip(1.0 - np.abs(edad - 26.0) / 12.0, 0.0, 1.0)
 
-    # n_ok=4 → logit=2 (88% titular); n_ok=3 → logit=0 (50%); n_ok≤2 → suplente
-    logits  = -6.0 + 2.0 * n_ok + rng.normal(0, 0.3, n)
+    # Calibrated logit — verified test cases (sin ruido):
+    #   Promedio (g=0.3,a=0.25,pct=75,m=180,c=6,e=26) → logit≈0.21  → ~55% titular
+    #   Crack    (g=0.6,a=0.5, pct=88,m=240,c=9,e=25) → logit≈1.69  → ~84% titular
+    #   Flojo    (g=0.05,a=0.1,pct=60,m=60, c=3,e=35) → logit≈-1.77 → ~15% titular
+    logits = (
+        -2.8
+        + 1.2 * (goals   / 1.5)
+        + 1.2 * (assists / 1.0)
+        + 1.2 * ((pct - 50.0) / 50.0)
+        + 1.2 * (mins    / 270.0)
+        + 1.2 * ((cond - 1.0) / 9.0)
+        + 0.4 * age_score
+        + rng.normal(0, 0.35, n)
+    )
     proba   = 1.0 / (1.0 + np.exp(-logits))
     titular = (rng.uniform(0, 1, n) < proba).astype(float)
     return goals, assists, pct, mins, cond, edad, titular
@@ -44,10 +50,10 @@ def normalizar(goals, assists, pct, mins, cond, edad) -> np.ndarray:
     ])
 
 
-def entrenar_modelo_lineup(epochs: int = 2000, lr: float = 0.03) -> MLP:
-    g, a, p, m, c, e, tit = generar_jugadores(1000)
+def entrenar_modelo_lineup(epochs: int = 2000, lr: float = 0.04) -> MLP:
+    g, a, p, m, c, e, tit = generar_jugadores(1200)
     X   = normalizar(g, a, p, m, c, e)
-    net = MLP([6, 32, 16, 1], lr=lr, seed=42)
+    net = MLP([6, 20, 12, 1], lr=lr, seed=42)
     for _ in range(epochs):
         net.train_epoch(X, tit, batch_size=64)
     return net
