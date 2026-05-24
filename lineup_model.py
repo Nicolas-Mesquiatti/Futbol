@@ -8,7 +8,7 @@ import numpy as np
 from mlp import MLP
 
 
-def generar_jugadores(n: int = 800, seed: int = 99) -> tuple:
+def generar_jugadores(n: int = 1000, seed: int = 99) -> tuple:
     rng = np.random.default_rng(seed)
     goals   = rng.uniform(0.0, 1.5, n)
     assists = rng.uniform(0.0, 1.0, n)
@@ -17,16 +17,18 @@ def generar_jugadores(n: int = 800, seed: int = 99) -> tuple:
     cond    = rng.uniform(1.0, 10.0, n)
     edad    = rng.uniform(17.0, 38.0, n)
 
-    # Ground-truth logit: more goals/assists/mins/fitness → starter
-    logits = (
-        -1.8
-        + 3.0  * goals
-        + 2.0  * assists
-        + 0.04 * (pct - 70)
-        + 0.012 * mins
-        + 0.30  * cond
-        - 0.06  * np.abs(edad - 26)   # peak age 26
-    )
+    # Strict AND-style criteria: ALL thresholds must be met to qualify as titular.
+    # Scoring 6/6 criteria = strongly titular; fewer = suplente.
+    ok_goals   = (goals   > 0.4).astype(float)
+    ok_assists = (assists  > 0.3).astype(float)
+    ok_pct     = (pct      > 72.0).astype(float)
+    ok_mins    = (mins     > 160.0).astype(float)
+    ok_cond    = (cond     > 6.0).astype(float)
+    ok_age     = ((edad >= 22.0) & (edad <= 32.0)).astype(float)
+    n_ok = ok_goals + ok_assists + ok_pct + ok_mins + ok_cond + ok_age
+
+    # Need 5-6 criteria for a positive logit; < 4 → firmly suplente
+    logits  = -12.0 + 2.5 * n_ok + rng.normal(0, 0.25, n)
     proba   = 1.0 / (1.0 + np.exp(-logits))
     titular = (rng.uniform(0, 1, n) < proba).astype(float)
     return goals, assists, pct, mins, cond, edad, titular
@@ -43,12 +45,12 @@ def normalizar(goals, assists, pct, mins, cond, edad) -> np.ndarray:
     ])
 
 
-def entrenar_modelo_lineup(epochs: int = 2000, lr: float = 0.06) -> MLP:
-    g, a, p, m, c, e, tit = generar_jugadores(800)
+def entrenar_modelo_lineup(epochs: int = 2000, lr: float = 0.03) -> MLP:
+    g, a, p, m, c, e, tit = generar_jugadores(1000)
     X   = normalizar(g, a, p, m, c, e)
-    net = MLP([6, 16, 10, 1], lr=lr, seed=42)
+    net = MLP([6, 32, 16, 1], lr=lr, seed=42)
     for _ in range(epochs):
-        net.train_step(X, tit)
+        net.train_epoch(X, tit, batch_size=64)
     return net
 
 
@@ -66,7 +68,7 @@ def factor_lineup(goals: float, assists: float, pct: float,
         ("la precisión de pases",              (pct - 50) / 50),
         ("los minutos jugados últimamente",    mins / 270),
         ("la condición física",                (cond - 1) / 9),
-        ("la edad (pico ~26 años)",            max(0.0, 1 - abs(edad - 26) / 10)),
+        ("la edad (pico 22-32 años)",          max(0.0, 1 - abs(edad - 27) / 10)),
     ]
     scores.sort(key=lambda x: x[1], reverse=True)
     return scores[0][0]

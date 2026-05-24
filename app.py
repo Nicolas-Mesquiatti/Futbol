@@ -3,6 +3,7 @@ app.py — xG/Lab · "¿Puede la IA entender el fútbol?"
 TP Integrador — Introducción a las Redes Neuronales — Opción B: MLP
 """
 
+import math
 import streamlit as st
 import streamlit.components.v1 as components
 import numpy as np
@@ -380,11 +381,11 @@ with tab3:
     c1, c2, c3 = st.columns(3)
     with c1:
         lr = st.select_slider("Tasa de aprendizaje (α)",
-                              options=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5],
-                              value=0.05, format_func=lambda x: f"{x}")
+                              options=[0.001, 0.005, 0.01, 0.03, 0.05, 0.1, 0.5],
+                              value=0.03, format_func=lambda x: f"{x}")
         n_ocultas = st.slider("Capas ocultas", 1, 4, 2)
     with c2:
-        n_neu = st.slider("Neuronas por capa", 4, 64, 16)
+        n_neu = st.slider("Neuronas por capa", 4, 64, 32)
         epochs_step = st.select_slider("Epochs por paso",
                                        options=[50, 100, 250, 500, 1000], value=250)
     with c3:
@@ -395,10 +396,6 @@ with tab3:
     arch = [2] + [n_neu] * n_ocultas + [1]
     n_params = sum(arch[i]*arch[i+1] + arch[i+1] for i in range(len(arch)-1))
     st.markdown(f"**Arquitectura:** `{' → '.join(map(str, arch))}` · **{n_params}** parámetros")
-
-    # Neural network diagram (always visible)
-    is_trained = st.session_state.mlp_xg is not None and st.session_state.epoch_xg > 0
-    st.markdown(styles.nn_diagram(arch, is_training=is_trained), unsafe_allow_html=True)
 
     b1, b2, b3 = st.columns(3)
     with b1:
@@ -411,85 +408,75 @@ with tab3:
             st.session_state.y_val    = gol_all[idx:]
             st.session_state.mlp_xg   = MLP(arch, lr=lr)
             st.session_state.epoch_xg = 0
-            st.rerun()
+            # No st.rerun() here — avoids scroll-to-top; Streamlit reruns naturally
     with b2:
         if st.button(f"▶ Entrenar {epochs_step} epochs", use_container_width=True):
             if st.session_state.mlp_xg is None:
                 st.warning("Primero inicializá la red.")
             else:
                 for _ in range(epochs_step):
-                    st.session_state.mlp_xg.train_step(
-                        st.session_state.x_train, st.session_state.y_train)
+                    st.session_state.mlp_xg.train_epoch(
+                        st.session_state.x_train, st.session_state.y_train, batch_size=64)
                 st.session_state.epoch_xg += epochs_step
                 st.rerun()
     with b3:
-        if st.button("🚀 Entrenar hasta 3000", use_container_width=True):
+        if st.button("🚀 Entrenar hasta 5000", use_container_width=True):
             if st.session_state.mlp_xg is None:
                 st.warning("Primero inicializá la red.")
             else:
-                faltan = max(0, 3000 - st.session_state.epoch_xg)
+                faltan = max(0, 5000 - st.session_state.epoch_xg)
                 for _ in range(faltan):
-                    st.session_state.mlp_xg.train_step(
-                        st.session_state.x_train, st.session_state.y_train)
+                    st.session_state.mlp_xg.train_epoch(
+                        st.session_state.x_train, st.session_state.y_train, batch_size=64)
                 st.session_state.epoch_xg += faltan
                 st.rerun()
 
     st.markdown("---")
 
-    if st.session_state.mlp_xg is not None:
-        mlp = st.session_state.mlp_xg
-        Xv, yv = st.session_state.x_val, st.session_state.y_val
-        acc_t = mlp.acc_history[-1]  if mlp.acc_history else 0
-        acc_v = mlp.accuracy(Xv, yv)
-        loss  = mlp.loss_history[-1] if mlp.loss_history else 1
+    # --- Metrics: always show all 4 cards (placeholder "—" before training) ---
+    mlp_ready = st.session_state.mlp_xg is not None
+    epoch_now = st.session_state.epoch_xg
+    if mlp_ready:
+        _mlp  = st.session_state.mlp_xg
+        _Xv   = st.session_state.x_val
+        _yv   = st.session_state.y_val
+        _acc_t = _mlp.acc_history[-1] if _mlp.acc_history else 0.0
+        _acc_v = _mlp.accuracy(_Xv, _yv)
+        _loss  = _mlp.loss_history[-1] if _mlp.loss_history else 1.0
 
-        # Epoch progress bar
-        progress = min(1.0, st.session_state.epoch_xg / 3000)
-        st.progress(progress,
-                    text=f"Progreso: **{st.session_state.epoch_xg:,} / 3000** epochs "
-                         f"({progress:.0%})")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Epoch",           f"{epoch_now:,}"  if mlp_ready else "—")
+    m2.metric("Pérdida (BCE)",   f"{_loss:.4f}"    if mlp_ready else "—")
+    m3.metric("Accuracy entr.",  f"{_acc_t:.1%}"   if mlp_ready else "—")
+    m4.metric("Accuracy valid.", f"{_acc_v:.1%}"   if mlp_ready else "—")
 
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Epoch",          f"{st.session_state.epoch_xg:,}")
-        m2.metric("Pérdida (BCE)",  f"{loss:.4f}")
-        m3.metric("Accuracy entr.", f"{acc_t:.1%}")
-        m4.metric("Accuracy valid.", f"{acc_v:.1%}")
+    progress = min(1.0, epoch_now / 5000)
+    st.progress(progress,
+                text=f"Progreso: **{epoch_now:,} / 5000** epochs ({progress:.0%})")
 
-        cA, cB = st.columns([3, 2])
-        with cA:
-            fig_hm = heatmap_xg(mlp, height=440)
-            xp_g,  yp_g  = tiros_a_xy(dist_all[gol_all == 1], ang_all[gol_all == 1])
-            xp_ng, yp_ng = tiros_a_xy(dist_all[gol_all == 0], ang_all[gol_all == 0])
-            fig_hm.add_trace(go.Scatter(x=xp_ng[:80], y=yp_ng[:80], mode="markers",
-                                        marker=dict(color="rgba(255,70,85,0.45)", size=5, symbol="x"),
-                                        showlegend=False, hoverinfo="skip"))
-            fig_hm.add_trace(go.Scatter(x=xp_g[:80], y=yp_g[:80], mode="markers",
-                                        marker=dict(color="rgba(0,212,170,0.95)", size=7,
-                                                    line=dict(color="white", width=1)),
-                                        showlegend=False, hoverinfo="skip"))
-            fig_hm.update_layout(title=dict(text="Mapa de peligro · P(gol) por zona",
-                                            font=dict(color=TEXT_1, family="Outfit", size=16)))
-            st.plotly_chart(fig_hm, use_container_width=True)
-
-        with cB:
-            # Loss curve — green + spline for smooth look
+    # --- NN diagram | Loss+Acc curves — equal side-by-side columns ---
+    is_trained = mlp_ready and epoch_now > 0
+    cA, cB = st.columns(2)
+    with cA:
+        st.markdown(styles.nn_diagram(arch, is_training=is_trained), unsafe_allow_html=True)
+    with cB:
+        if mlp_ready and _mlp.loss_history:
             fig_l = go.Figure()
             fig_l.add_trace(go.Scatter(
-                y=mlp.loss_history, mode="lines",
+                y=_mlp.loss_history, mode="lines",
                 line=dict(color=ACC_G, width=2, shape="spline", smoothing=1.1),
                 fill="tozeroy", fillcolor="rgba(0,212,170,0.08)",
             ))
             fig_l.update_layout(
                 title=dict(text="Curva de pérdida (BCE)",
                            font=dict(color=TEXT_1, family="Outfit", size=14)),
-                height=215, **PLOTLY_DARK,
+                height=200, **PLOTLY_DARK,
             )
             st.plotly_chart(fig_l, use_container_width=True)
 
-            # Accuracy curve
             fig_a = go.Figure()
             fig_a.add_trace(go.Scatter(
-                y=mlp.acc_history, mode="lines",
+                y=_mlp.acc_history, mode="lines",
                 line=dict(color=ACC_Y, width=2, shape="spline", smoothing=1.1),
                 fill="tozeroy", fillcolor="rgba(255,215,0,0.08)",
             ))
@@ -497,19 +484,37 @@ with tab3:
                 title=dict(text="Accuracy por epoch",
                            font=dict(color=TEXT_1, family="Outfit", size=14)),
                 yaxis=dict(range=[0, 1], gridcolor="rgba(255,255,255,0.05)"),
-                height=215,
+                height=200,
                 **{k: v for k, v in PLOTLY_DARK.items() if k != "yaxis"},
             )
             st.plotly_chart(fig_a, use_container_width=True)
-
-        if acc_v >= 0.75:
-            st.success(f"✅ La red predice bien: **{acc_v:.1%}** de los tiros clasificados correctamente.")
-        elif acc_v >= 0.65:
-            st.info(f"📊 La red está aprendiendo: **{acc_v:.1%}** de accuracy. Seguí entrenando.")
         else:
-            st.warning("⚠️ La red todavía no aprendió bien. Probá más epochs o ajustá la arquitectura.")
+            st.caption("Las curvas de entrenamiento aparecen aquí después de entrenar la red.")
+
+    # --- Heatmap (only when trained) ---
+    if mlp_ready:
+        fig_hm = heatmap_xg(_mlp, height=440)
+        xp_g,  yp_g  = tiros_a_xy(dist_all[gol_all == 1], ang_all[gol_all == 1])
+        xp_ng, yp_ng = tiros_a_xy(dist_all[gol_all == 0], ang_all[gol_all == 0])
+        fig_hm.add_trace(go.Scatter(x=xp_ng[:80], y=yp_ng[:80], mode="markers",
+                                    marker=dict(color="rgba(255,70,85,0.45)", size=5, symbol="x"),
+                                    showlegend=False, hoverinfo="skip"))
+        fig_hm.add_trace(go.Scatter(x=xp_g[:80], y=yp_g[:80], mode="markers",
+                                    marker=dict(color="rgba(0,212,170,0.95)", size=7,
+                                                line=dict(color="white", width=1)),
+                                    showlegend=False, hoverinfo="skip"))
+        fig_hm.update_layout(title=dict(text="Mapa de peligro · P(gol) por zona",
+                                        font=dict(color=TEXT_1, family="Outfit", size=16)))
+        st.plotly_chart(fig_hm, use_container_width=True)
+
+        if _acc_v >= 0.75:
+            st.success(f"La red predice bien: **{_acc_v:.1%}** de los tiros clasificados correctamente.")
+        elif _acc_v >= 0.65:
+            st.info(f"La red está aprendiendo: **{_acc_v:.1%}** de accuracy. Seguí entrenando.")
+        else:
+            st.warning("La red todavía no aprendió bien. Probá más epochs o ajustá la arquitectura.")
     else:
-        st.info("👆 Hacé clic en **🔄 Inicializar red** para empezar.")
+        st.info("Hacé clic en **Inicializar red** para empezar.")
 
 
 # ----------------------------------------------------------------
@@ -557,7 +562,67 @@ with tab4:
             x_t, y_t = tiros_a_xy(np.array([dist_sim]), np.array([ang_sim]))
             cx, cy = float(x_t[0]), float(y_t[0])
 
-            # Green glowing dot — layered circles for glow effect
+            # Goal geometry (goal at x=0, posts at y=30.34 and y=37.66)
+            G_TOP = (0.0, 37.66)
+            G_BOT = (0.0, 30.34)
+            G_CTR = (0.0, 34.00)
+
+            # 1. Filled cone: triangle from goal posts to player position
+            fig_sim.add_trace(go.Scatter(
+                x=[G_TOP[0], cx, G_BOT[0], G_TOP[0]],
+                y=[G_TOP[1], cy, G_BOT[1], G_TOP[1]],
+                fill="toself",
+                fillcolor="rgba(0,212,170,0.12)",
+                line=dict(color="rgba(0,212,170,0.40)", width=1.2),
+                showlegend=False, hoverinfo="skip",
+            ))
+
+            # 2. Dashed line from goal center to player
+            fig_sim.add_trace(go.Scatter(
+                x=[G_CTR[0], cx], y=[G_CTR[1], cy],
+                mode="lines",
+                line=dict(color="rgba(0,212,170,0.65)", width=1.5, dash="dash"),
+                showlegend=False, hoverinfo="skip",
+            ))
+
+            # 3. Distance label near midpoint of the dashed line
+            mx = (G_CTR[0] + cx) / 2
+            my = (G_CTR[1] + cy) / 2
+            label_dy = 1.8 if cy >= 34 else -1.8
+            fig_sim.add_trace(go.Scatter(
+                x=[mx], y=[my + label_dy],
+                mode="text",
+                text=[f"{dist_sim} m"],
+                textfont=dict(color="rgba(255,255,255,0.88)", size=11, family="JetBrains Mono"),
+                showlegend=False, hoverinfo="skip",
+            ))
+
+            # 4. Small arc at player position showing the shooting angle
+            a_top = math.atan2(G_TOP[1] - cy, G_TOP[0] - cx)
+            a_bot = math.atan2(G_BOT[1] - cy, G_BOT[0] - cx)
+            a_lo, a_hi = min(a_top, a_bot), max(a_top, a_bot)
+            arc_r = max(1.2, dist_sim * 0.10)
+            arc_angles = np.linspace(a_lo, a_hi, 30)
+            fig_sim.add_trace(go.Scatter(
+                x=cx + arc_r * np.cos(arc_angles),
+                y=cy + arc_r * np.sin(arc_angles),
+                mode="lines",
+                line=dict(color="rgba(0,212,170,0.95)", width=2),
+                showlegend=False, hoverinfo="skip",
+            ))
+
+            # 5. Angle label near the midpoint of the arc
+            a_mid = (a_lo + a_hi) / 2
+            fig_sim.add_trace(go.Scatter(
+                x=[cx + arc_r * 1.9 * math.cos(a_mid)],
+                y=[cy + arc_r * 1.9 * math.sin(a_mid)],
+                mode="text",
+                text=[f"{ang_sim}°"],
+                textfont=dict(color="rgba(255,255,255,0.88)", size=10, family="JetBrains Mono"),
+                showlegend=False, hoverinfo="skip",
+            ))
+
+            # 6. Glowing green dot (layered circles for glow)
             for sz, alpha in [(54, 0.07), (38, 0.14), (24, 0.28)]:
                 fig_sim.add_trace(go.Scatter(
                     x=[cx], y=[cy], mode="markers",
@@ -565,12 +630,9 @@ with tab4:
                     showlegend=False, hoverinfo="skip",
                 ))
             fig_sim.add_trace(go.Scatter(
-                x=[cx], y=[cy], mode="markers+text",
+                x=[cx], y=[cy], mode="markers",
                 marker=dict(color=ACC_G, size=13, symbol="circle",
                             line=dict(color="white", width=2.5)),
-                text=[f" {dist_sim}m · {ang_sim}°"],
-                textposition="middle right",
-                textfont=dict(color=TEXT_1, size=12, family="JetBrains Mono"),
                 showlegend=False,
                 hovertemplate=f"Distancia: {dist_sim} m<br>Ángulo: {ang_sim}°<br>xG: {proba:.1%}<extra></extra>",
             ))
@@ -677,12 +739,12 @@ with tab6:
     c1, c2 = st.columns([1, 1])
     with c1:
         st.markdown("#### Stats del jugador")
-        goals_in   = st.slider("⚽ Goles por 90 min",        0.0, 1.5, 0.6, step=0.05)
-        assists_in = st.slider("🎯 Asistencias por 90 min",  0.0, 1.0, 0.3, step=0.05)
-        pct_in     = st.slider("🎯 Precisión de pases (%)",  50,  100, 82)
-        mins_in    = st.slider("⏱ Minutos últimos 3 partidos", 0, 270, 200)
-        cond_in    = st.slider("💪 Condición física (1–10)",  1,  10,  7)
-        edad_in    = st.slider("📅 Edad del jugador",        17,  38,  24)
+        goals_in   = st.slider("Goles por 90 min",         0.0, 1.5, 0.6, step=0.05)
+        assists_in = st.slider("Asistencias por 90 min",   0.0, 1.0, 0.3, step=0.05)
+        pct_in     = st.slider("Precisión de pases (%)",   50,  100, 82)
+        mins_in    = st.slider("Minutos últimos 3 partidos", 0, 270, 200)
+        cond_in    = st.slider("Condición física (1-10)",   1,  10,  7)
+        edad_in    = st.slider("Edad del jugador",         17,  38,  24)
 
     p_tit = lineup_model.predecir_lineup(
         net_lu, goals_in, assists_in, pct_in, mins_in, cond_in, edad_in)
@@ -740,12 +802,12 @@ with tab7:
     c1, c2 = st.columns([1, 1])
     with c1:
         st.markdown("#### Carga del jugador")
-        mins_inj   = st.slider("⏱ Minutos en los últimos 3 partidos",  0, 270, 210)
-        dias_inj   = st.slider("🩹 Días desde la última lesión",        0, 365, 45,
+        mins_inj   = st.slider("Minutos en los últimos 3 partidos",  0, 270, 210)
+        dias_inj   = st.slider("Días desde la última lesión",        0, 365, 45,
                                help="0 = lesionado ayer · 365 = hace un año sin lesiones")
-        edad_inj   = st.slider("📅 Edad del jugador",                  17,  38,  28)
-        inten_inj  = st.slider("🏋 Intensidad de entrenamiento (1–10)", 1,  10,   7)
-        part_inj   = st.slider("📅 Partidos en los últimos 30 días",    0,  12,   6)
+        edad_inj   = st.slider("Edad del jugador",                  17,  38,  28)
+        inten_inj  = st.slider("Intensidad de entrenamiento (1-10)", 1,  10,   7)
+        part_inj   = st.slider("Partidos en los últimos 30 días",    0,  12,   6)
 
     p_les = injury_model.predecir_lesion(
         net_inj, mins_inj, dias_inj, edad_inj, inten_inj, part_inj)

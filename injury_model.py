@@ -44,12 +44,12 @@ def normalizar(minutos, dias, edad, inten, partidos) -> np.ndarray:
     ])
 
 
-def entrenar_modelo_injury(epochs: int = 2000, lr: float = 0.06) -> MLP:
-    m, d, e, i, p, l = generar_lesiones(800)
+def entrenar_modelo_injury(epochs: int = 2000, lr: float = 0.05) -> MLP:
+    m, d, e, i, p, l = generar_lesiones(1000)
     X   = normalizar(m, d, e, i, p)
-    net = MLP([5, 16, 10, 1], lr=lr, seed=77)
+    net = MLP([5, 32, 16, 1], lr=lr, seed=77)
     for _ in range(epochs):
-        net.train_step(X, l)
+        net.train_epoch(X, l, batch_size=64)
     return net
 
 

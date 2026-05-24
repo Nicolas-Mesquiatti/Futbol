@@ -60,16 +60,16 @@ def normalizar(vel, ball, zona, minuto, score) -> np.ndarray:
 # ---------------------------------------------------------------
 # Construcción / entrenamiento rápido
 # ---------------------------------------------------------------
-def entrenar_modelo_arbitro(epochs: int = 1500, lr: float = 0.08) -> MLP:
+def entrenar_modelo_arbitro(epochs: int = 2000, lr: float = 0.05) -> MLP:
     """
-    Entrena un MLP 5-12-8-1 sobre los datos sintéticos.
+    Entrena un MLP 5-32-16-1 con mini-batch SGD sobre los datos sintéticos.
     Devuelve la red lista para usar.
     """
-    vel, ball, zona, minuto, score, amarilla = generar_fouls(800)
+    vel, ball, zona, minuto, score, amarilla = generar_fouls(1000)
     X = normalizar(vel, ball, zona, minuto, score)
-    net = MLP([5, 12, 8, 1], lr=lr, seed=11)
+    net = MLP([5, 32, 16, 1], lr=lr, seed=11)
     for _ in range(epochs):
-        net.train_step(X, amarilla)
+        net.train_epoch(X, amarilla, batch_size=64)
     return net
 
 

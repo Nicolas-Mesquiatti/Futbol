@@ -99,9 +99,28 @@ class MLP:
     # API pública
     # ------------------------------------------------------------------
     def train_step(self, X: np.ndarray, y: np.ndarray) -> float:
-        """Un epoch de entrenamiento. Retorna la pérdida BCE."""
+        """Un epoch de entrenamiento (batch completo). Retorna la pérdida BCE."""
         self.forward(X)
         self.backward(y)
+        proba = self.predict_proba(X)
+        eps = 1e-9
+        loss = float(-np.mean(y * np.log(proba + eps) + (1 - y) * np.log(1 - proba + eps)))
+        acc = float(np.mean((proba >= 0.5).astype(int) == y))
+        self.loss_history.append(loss)
+        self.acc_history.append(acc)
+        return loss
+
+    def train_epoch(self, X: np.ndarray, y: np.ndarray, batch_size: int = 64) -> float:
+        """Mini-batch SGD: shuffle, split into batches of batch_size, update weights.
+        Records epoch-level loss/acc on the full dataset. Retorna BCE loss."""
+        m = X.shape[0]
+        idx = np.random.permutation(m)
+        X_s, y_s = X[idx], y[idx]
+        for start in range(0, m, batch_size):
+            Xb = X_s[start:start + batch_size]
+            yb = y_s[start:start + batch_size]
+            self.forward(Xb)
+            self.backward(yb)
         proba = self.predict_proba(X)
         eps = 1e-9
         loss = float(-np.mean(y * np.log(proba + eps) + (1 - y) * np.log(1 - proba + eps)))
