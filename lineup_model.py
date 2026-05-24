@@ -17,18 +17,17 @@ def generar_jugadores(n: int = 1000, seed: int = 99) -> tuple:
     cond    = rng.uniform(1.0, 10.0, n)
     edad    = rng.uniform(17.0, 38.0, n)
 
-    # Strict AND-style criteria: ALL thresholds must be met to qualify as titular.
-    # Scoring 6/6 criteria = strongly titular; fewer = suplente.
-    ok_goals   = (goals   > 0.4).astype(float)
-    ok_assists = (assists  > 0.3).astype(float)
-    ok_pct     = (pct      > 72.0).astype(float)
-    ok_mins    = (mins     > 160.0).astype(float)
-    ok_cond    = (cond     > 6.0).astype(float)
-    ok_age     = ((edad >= 22.0) & (edad <= 32.0)).astype(float)
+    # Balanced 4/6 criteria: softer thresholds; meeting 4+ = titular.
+    ok_goals   = (goals   >= 0.25).astype(float)
+    ok_assists = (assists >= 0.20).astype(float)
+    ok_pct     = (pct     >= 68.0).astype(float)
+    ok_mins    = (mins    >= 120.0).astype(float)
+    ok_cond    = (cond    >= 5.0).astype(float)
+    ok_age     = ((edad >= 20.0) & (edad <= 34.0)).astype(float)
     n_ok = ok_goals + ok_assists + ok_pct + ok_mins + ok_cond + ok_age
 
-    # Need 5-6 criteria for a positive logit; < 4 → firmly suplente
-    logits  = -12.0 + 2.5 * n_ok + rng.normal(0, 0.25, n)
+    # n_ok=4 → logit=2 (88% titular); n_ok=3 → logit=0 (50%); n_ok≤2 → suplente
+    logits  = -6.0 + 2.0 * n_ok + rng.normal(0, 0.3, n)
     proba   = 1.0 / (1.0 + np.exp(-logits))
     titular = (rng.uniform(0, 1, n) < proba).astype(float)
     return goals, assists, pct, mins, cond, edad, titular

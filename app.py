@@ -55,14 +55,15 @@ PLOTLY_DARK = dict(
 # DATOS SINTÉTICOS
 # ===================================================================
 @st.cache_data
-def generar_tiros(n: int = 600, seed: int = 42) -> tuple:
+def generar_tiros(n: int = 800, seed: int = 42) -> tuple:
     rng = np.random.default_rng(seed)
     distancia = rng.uniform(4, 36, n)
     angulo    = rng.uniform(3, 87, n)
-    # Tuned formula → ~22-25% goals (≈130-140 out of 600); close shots reach >50% xG
-    raw = 1.25 * np.exp(-distancia / 11.5) * (angulo / 90.0) ** 0.30
-    xg  = np.clip(raw, 0.04, 0.92)
-    gol = (rng.uniform(0, 1, n) < xg).astype(float)
+    # Sharper formula: clear separation between close/wide shots and distant/tight ones
+    ang_n = angulo / 90.0
+    raw   = 1.5 * np.exp(-distancia / 9.5) * (ang_n ** 0.22)
+    xg    = np.clip(raw, 0.02, 0.95)
+    gol   = (rng.uniform(0, 1, n) < xg).astype(float)
     return distancia, angulo, gol, xg
 
 
@@ -243,29 +244,52 @@ GLOSARIO = [
 def _init_state():
     for k, v in dict(mlp_xg=None, epoch_xg=0, x_train=None, y_train=None,
                      x_val=None, y_val=None, net_ref=None, net_lineup=None,
-                     net_injury=None).items():
+                     net_injury=None, just_initialized=False).items():
         if k not in st.session_state:
             st.session_state[k] = v
 _init_state()
 
-dist_all, ang_all, gol_all, xg_all = generar_tiros(600)
+dist_all, ang_all, gol_all, xg_all = generar_tiros(800)
 
 
 # ===================================================================
 # HERO
 # ===================================================================
-st.markdown(styles.hero(n_tiros=600, target_acc=78), unsafe_allow_html=True)
+st.markdown(styles.hero(n_tiros=800, target_acc=85), unsafe_allow_html=True)
 # Inject scroll+tab JS functions into parent window via isolated iframe
 components.html(styles.hero_js(), height=0)
+
+# Scroll-to-training fix: after Inicializar, rerun fires and we re-click the correct tab
+if st.session_state.just_initialized:
+    st.session_state.just_initialized = False
+    components.html("""<script>
+setTimeout(function() {
+  var tabs = parent.document.querySelectorAll('[data-baseweb="tab"]');
+  if (tabs && tabs.length > 3) {
+    tabs[3].click();  // "Entrenar la red" = index 3 with Introducción tab added
+    setTimeout(function() {
+      var el = parent.document.querySelector('[data-testid="stTabs"]');
+      if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    }, 250);
+  }
+}, 150);
+</script>""", height=0)
 
 
 # ===================================================================
 # TABS
 # ===================================================================
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-    "Cómo funciona", "Los datos", "Entrenar la red",
+tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+    "Introducción", "Cómo funciona", "Los datos", "Entrenar la red",
     "Simulador xG", "Árbitro IA", "Titular o Suplente", "¿Se lesiona?", "Glosario",
 ])
+
+
+# ----------------------------------------------------------------
+# TAB 0 — INTRODUCCIÓN
+# ----------------------------------------------------------------
+with tab0:
+    st.markdown(styles.intro_tab_content(), unsafe_allow_html=True)
 
 
 # ----------------------------------------------------------------
@@ -325,7 +349,7 @@ históricos donde se sabe el resultado. Exactamente lo que vas a hacer acá.
 with tab2:
     st.markdown(styles.section_head(
         kicker="03 · Dataset",
-        title="600 tiros sintéticos.",
+        title="800 tiros sintéticos.",
         lead="Características basadas en estadísticas reales de Premier League "
              "y Champions League. Cada tiro tiene distancia + ángulo + resultado."
     ), unsafe_allow_html=True)
@@ -374,15 +398,15 @@ with tab3:
     st.markdown(styles.section_head(
         kicker="04 · Módulo",
         title="Entrenamiento en vivo.",
-        lead="Mirá cómo la red aprende. Cada epoch es una pasada por los 600 tiros, "
+        lead="Mirá cómo la red aprende. Cada epoch es una pasada por los 800 tiros, "
              "y los pesos se ajustan con backpropagation."
     ), unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns(3)
     with c1:
         lr = st.select_slider("Tasa de aprendizaje (α)",
-                              options=[0.001, 0.005, 0.01, 0.03, 0.05, 0.1, 0.5],
-                              value=0.03, format_func=lambda x: f"{x}")
+                              options=[0.001, 0.005, 0.01, 0.02, 0.03, 0.05, 0.1, 0.5],
+                              value=0.02, format_func=lambda x: f"{x}")
         n_ocultas = st.slider("Capas ocultas", 1, 4, 2)
     with c2:
         n_neu = st.slider("Neuronas por capa", 4, 64, 32)
@@ -390,8 +414,8 @@ with tab3:
                                        options=[50, 100, 250, 500, 1000], value=250)
     with c3:
         train_pct = st.slider("% datos para entrenamiento", 60, 90, 80)
-        st.caption(f"Entrenamiento: **{int(600 * train_pct/100)}** tiros · "
-                   f"Validación: **{int(600 * (1-train_pct/100))}** tiros")
+        st.caption(f"Entrenamiento: **{int(800 * train_pct/100)}** tiros · "
+                   f"Validación: **{int(800 * (1-train_pct/100))}** tiros")
 
     arch = [2] + [n_neu] * n_ocultas + [1]
     n_params = sum(arch[i]*arch[i+1] + arch[i+1] for i in range(len(arch)-1))
@@ -400,15 +424,16 @@ with tab3:
     b1, b2, b3 = st.columns(3)
     with b1:
         if st.button("🔄 Inicializar red", use_container_width=True):
-            idx = int(600 * train_pct / 100)
+            idx = int(800 * train_pct / 100)
             X = np.column_stack([dist_all / 36.0, ang_all / 90.0])
-            st.session_state.x_train  = X[:idx]
-            st.session_state.y_train  = gol_all[:idx]
-            st.session_state.x_val    = X[idx:]
-            st.session_state.y_val    = gol_all[idx:]
-            st.session_state.mlp_xg   = MLP(arch, lr=lr)
-            st.session_state.epoch_xg = 0
-            # No st.rerun() here — avoids scroll-to-top; Streamlit reruns naturally
+            st.session_state.x_train        = X[:idx]
+            st.session_state.y_train        = gol_all[:idx]
+            st.session_state.x_val          = X[idx:]
+            st.session_state.y_val          = gol_all[idx:]
+            st.session_state.mlp_xg         = MLP(arch, lr=lr)
+            st.session_state.epoch_xg       = 0
+            st.session_state.just_initialized = True
+            st.rerun()
     with b2:
         if st.button(f"▶ Entrenar {epochs_step} epochs", use_container_width=True):
             if st.session_state.mlp_xg is None:
