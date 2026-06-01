@@ -17,6 +17,45 @@ import styles
 import lineup_model
 import injury_model
 
+try:
+    from statsbombpy import sb
+    STATSBOMB_OK = True
+except Exception:
+    STATSBOMB_OK = False
+
+
+# ===================================================================
+# STATSBOMB — partidos abiertos (open-data)
+# ===================================================================
+PARTIDOS_REALES = {
+    "Messi vs Real Madrid (2011, La Liga)": 69249,
+    "Barcelona vs Arsenal · UCL (2016)":    7581,
+    "España vs Alemania · Mundial 2010":    7576,
+}
+
+
+@st.cache_data(show_spinner=False)
+def cargar_tiros_reales(match_id: int) -> pd.DataFrame:
+    """Descarga eventos de StatsBomb open-data y devuelve solo los tiros."""
+    eventos = sb.events(match_id=match_id)
+    tiros = eventos[eventos["type"] == "Shot"].copy()
+    # location llega como [x, y] sobre cancha 120x80 → normalizamos a 0..52.5 × 0..68
+    locs = tiros["location"].dropna()
+    tiros = tiros.loc[locs.index]
+    tiros["x_sb"] = locs.apply(lambda v: v[0])
+    tiros["y_sb"] = locs.apply(lambda v: v[1])
+    tiros["x_cancha"] = (120.0 - tiros["x_sb"]) / 120.0 * 52.5
+    tiros["y_cancha"] = tiros["y_sb"] / 80.0 * 68.0
+    tiros["es_gol"]   = (tiros["shot_outcome"] == "Goal").astype(int)
+    tiros["xg_sb"]    = tiros["shot_statsbomb_xg"].fillna(0.0)
+    # distancia (m) y ángulo (°) usando cancha 52.5 × 68, arco en (0, 34)
+    dx = tiros["x_cancha"]
+    dy = (tiros["y_cancha"] - 34.0).abs()
+    tiros["distancia"] = np.sqrt(dx ** 2 + dy ** 2).clip(4, 36)
+    tiros["angulo"]    = np.degrees(np.arctan2(dx, dy + 0.1)).clip(3, 87)
+    return tiros[["player", "minute", "x_cancha", "y_cancha",
+                  "es_gol", "xg_sb", "distancia", "angulo", "shot_outcome"]]
+
 
 # ===================================================================
 # CONFIG
@@ -270,9 +309,10 @@ components.html(styles.hero_js(), height=0)
 # ===================================================================
 # TABS
 # ===================================================================
-tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_real, tab8 = st.tabs([
     "Introducción", "Cómo funciona", "Los datos", "Entrenar la red",
-    "Simulador xG", "Árbitro IA", "Titular o Suplente", "¿Se lesiona?", "Glosario",
+    "Simulador xG", "Árbitro IA", "Titular o Suplente", "¿Se lesiona?",
+    "Datos Reales", "Glosario",
 ])
 
 # JS de navegación: hero buttons (via query param) y Inicializar (just_initialized)
@@ -889,6 +929,146 @@ with tab7:
                 mins_inj, dias_inj, edad_inj, inten_inj, part_inj),
             unsafe_allow_html=True,
         )
+
+
+# ----------------------------------------------------------------
+# TAB EXTRA — DATOS REALES (StatsBomb open-data)
+# ----------------------------------------------------------------
+with tab_real:
+    st.markdown(styles.section_head(
+        kicker="09 · Datos reales",
+        title="Tiros de verdad. Partidos de verdad.",
+        lead="Hasta acá entrenamos con datos sintéticos. Ahora la red se enfrenta a "
+             "tiros reales de partidos históricos, cortesía del open-data de StatsBomb."
+    ), unsafe_allow_html=True)
+
+    # ---------- SECCIÓN 1: TIROS REALES ----------
+    if not STATSBOMB_OK:
+        st.error("No se pudo importar `statsbombpy`. Verificá `requirements.txt`.")
+    else:
+        partido = st.selectbox("Elegí un partido", list(PARTIDOS_REALES.keys()))
+        match_id = PARTIDOS_REALES[partido]
+
+        with st.spinner(f"Descargando eventos del partido…"):
+            try:
+                tiros_df = cargar_tiros_reales(match_id)
+            except Exception as e:
+                st.error(f"No se pudieron cargar los datos: {e}")
+                tiros_df = None
+
+        if tiros_df is not None and len(tiros_df) > 0:
+            n_tiros_real = len(tiros_df)
+            n_goles_real = int(tiros_df["es_gol"].sum())
+            xg_total = float(tiros_df["xg_sb"].sum())
+            st.markdown(styles.dataset_stats(n_tiros_real, n_goles_real),
+                        unsafe_allow_html=True)
+
+            # Cancha con tiros reales
+            fig_real = cancha_base(height=520)
+            for es_gol, color, name in [
+                (0, "rgba(255,70,85,0.75)", "No gol"),
+                (1, "rgba(0,212,170,0.95)", "Gol ⚽"),
+            ]:
+                sub = tiros_df[tiros_df["es_gol"] == es_gol]
+                if len(sub) == 0:
+                    continue
+                sizes = (sub["xg_sb"] * 45 + 7).clip(6, 38)
+                hover = [
+                    f"<b>{row.player}</b><br>Minuto: {row.minute}'<br>"
+                    f"xG StatsBomb: {row.xg_sb:.3f}<br>Resultado: {row.shot_outcome}"
+                    for row in sub.itertuples()
+                ]
+                fig_real.add_trace(go.Scatter(
+                    x=sub["x_cancha"], y=sub["y_cancha"], mode="markers", name=name,
+                    marker=dict(color=color, size=sizes,
+                                line=dict(color="white", width=1)),
+                    text=hover, hovertemplate="%{text}<extra></extra>",
+                ))
+            fig_real.update_layout(
+                showlegend=True,
+                legend=dict(bgcolor="rgba(0,0,0,0.4)", bordercolor=BORDER,
+                            borderwidth=1, font=dict(color=TEXT_1, family="Inter"),
+                            x=0.02, y=0.98),
+                title=dict(text=f"Tiros reales — {partido}",
+                           font=dict(color=TEXT_1, family="Outfit", size=16)),
+            )
+            st.plotly_chart(fig_real, use_container_width=True)
+            st.caption("Tamaño del punto proporcional al xG real de StatsBomb. "
+                       "Hover para ver jugador, minuto, xG y resultado.")
+
+            # Top 10 tiros por xG
+            st.markdown("### Top 10 tiros del partido (por xG StatsBomb)")
+            top10 = tiros_df.nlargest(10, "xg_sb").reset_index(drop=True)
+            tabla_top = pd.DataFrame({
+                "Jugador":    top10["player"],
+                "Minuto":     top10["minute"].astype(int).astype(str) + "'",
+                "xG StatsBomb": top10["xg_sb"].apply(lambda v: f"{v:.3f}"),
+                "Resultado":  top10["shot_outcome"],
+            })
+            st.dataframe(tabla_top, use_container_width=True, hide_index=True)
+
+            # ---------- COMPARACIÓN CON LA RED ----------
+            st.markdown("---")
+            st.markdown("### Tu red vs StatsBomb")
+            if st.session_state.mlp_xg is None:
+                st.info("Primero entrenás la red en la pestaña **Entrenar la red** "
+                        "para ver esta comparación.")
+            else:
+                mlp_real = st.session_state.mlp_xg
+                X_real = np.column_stack([
+                    tiros_df["distancia"].values / 36.0,
+                    tiros_df["angulo"].values    / 90.0,
+                ])
+                xg_red = mlp_real.predict_proba(X_real)
+
+                avg_sb  = float(tiros_df["xg_sb"].mean())
+                avg_red = float(xg_red.mean())
+                cA, cB, cC = st.columns(3)
+                cA.metric("xG promedio · StatsBomb", f"{avg_sb:.3f}")
+                cB.metric("xG promedio · tu red",    f"{avg_red:.3f}")
+                cC.metric("Diferencia",              f"{(avg_red - avg_sb):+.3f}")
+
+                # Scatter xG StatsBomb vs xG red
+                fig_cmp = go.Figure()
+                fig_cmp.add_trace(go.Scatter(
+                    x=[0, 1], y=[0, 1], mode="lines", name="Perfecto",
+                    line=dict(color="rgba(255,255,255,0.35)", dash="dash", width=1.5),
+                    hoverinfo="skip",
+                ))
+                colors = ["rgba(0,212,170,0.85)" if g == 1 else "rgba(255,70,85,0.75)"
+                          for g in tiros_df["es_gol"]]
+                hover = [
+                    f"{row.player}<br>min {row.minute}'<br>"
+                    f"SB: {row.xg_sb:.3f} · red: {pred:.3f}"
+                    for row, pred in zip(tiros_df.itertuples(), xg_red)
+                ]
+                fig_cmp.add_trace(go.Scatter(
+                    x=tiros_df["xg_sb"], y=xg_red, mode="markers", name="Tiros",
+                    marker=dict(color=colors, size=10,
+                                line=dict(color="white", width=0.8)),
+                    text=hover, hovertemplate="%{text}<extra></extra>",
+                ))
+                fig_cmp.update_layout(
+                    title=dict(text="¿Qué tan cerca está tu red de StatsBomb?",
+                               font=dict(color=TEXT_1, family="Outfit", size=15)),
+                    xaxis=dict(title="xG StatsBomb",  range=[0, 1]),
+                    yaxis=dict(title="xG tu red",     range=[0, 1], scaleanchor="x"),
+                    height=480, **PLOTLY_DARK,
+                )
+                st.plotly_chart(fig_cmp, use_container_width=True)
+                st.caption("Cuanto más cerca de la línea diagonal, mejor aprendió la red. "
+                           "Verde = gol real · Rojo = no gol.")
+
+    # ---------- SECCIÓN 2: SABÍAS QUE... ----------
+    st.markdown("---")
+    st.markdown(styles.section_head(
+        kicker="10 · Curiosidades",
+        title="Sabías que...",
+        lead="Datos reales sobre cómo los clubes top del mundo usan analytics "
+             "para tomar decisiones que antes dependían del ojo del DT."
+    ), unsafe_allow_html=True)
+
+    st.markdown(styles.sabias_que_cards(), unsafe_allow_html=True)
 
 
 # ----------------------------------------------------------------

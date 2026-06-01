@@ -1346,6 +1346,85 @@ def injury_feature_table(minutos: float, dias: float, edad: float,
 
 
 # ===================================================================
+# SABÍAS QUE... CARDS  (curiosidades reales del fútbol + analytics)
+# ===================================================================
+def sabias_que_cards() -> str:
+    """Grid de cards con curiosidades reales sobre analytics en clubes top."""
+    cards = [
+        ("Liverpool",      "#00D4AA",
+         "El Liverpool de Klopp pasó de ignorar el xG a basar todas sus contrataciones "
+         "en él. Firmaron a Salah cuando su xG indicaba que era el mejor extremo "
+         "disponible en Europa.",
+         "Salah", "2017 · 0.62 xG/90"),
+        ("Arsenal",        "#FFD700",
+         "El Arsenal 2023/24 fue el equipo con más goles de corner de la Premier "
+         "League. Arteta diseñó cada rutina con modelos de datos.",
+         "16", "goles de corner · 2023/24"),
+        ("Messi · Barça",  "#FF4655",
+         "En su mejor temporada (2011/12), Messi convertía un 42% de sus tiros "
+         "esperados. El promedio de la liga era 28%.",
+         "42%", "conversión · liga: 28%"),
+        ("Bayern Munich",  "#5EE8C7",
+         "El Bayern Munich usa modelos de lesiones similares al de esta app para "
+         "gestionar la carga de sus jugadores semana a semana.",
+         "−27%", "lesiones musculares · 5 temporadas"),
+        ("Brentford FC",   "#00D4AA",
+         "El Brentford FC ascendió a la Premier League basándose casi exclusivamente "
+         "en analytics. No tienen ojeadores tradicionales.",
+         "0", "scouts tradicionales en plantilla"),
+    ]
+    items = ""
+    for title, color, text, big, small in cards:
+        items += f"""
+<div class="sq-card">
+  <div class="sq-head" style="color:{color};">{title}</div>
+  <p class="sq-text">{text}</p>
+  <div class="sq-stat">
+    <div class="sq-big" style="color:{color};">{big}</div>
+    <div class="sq-small">{small}</div>
+  </div>
+</div>
+"""
+    return f"""
+<style>
+.sq-grid {{
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  margin: 8px 0 12px;
+}}
+@media (max-width: 980px) {{ .sq-grid {{ grid-template-columns: repeat(2, 1fr); }} }}
+@media (max-width: 560px) {{ .sq-grid {{ grid-template-columns: 1fr; }} }}
+.sq-card {{
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), #1A1A2E;
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+  padding: 22px 22px 18px; display: flex; flex-direction: column;
+  transition: border-color .25s, transform .25s;
+}}
+.sq-card:hover {{ border-color: rgba(255,255,255,0.16); transform: translateY(-2px); }}
+.sq-head {{
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 12px;
+}}
+.sq-text {{
+  color: #FFFFFF; font-size: 14px; line-height: 1.6; margin: 0 0 16px; flex: 1;
+}}
+.sq-stat {{
+  border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;
+  display: flex; align-items: baseline; gap: 12px;
+}}
+.sq-big {{
+  font-family: 'Outfit', sans-serif; font-weight: 800;
+  font-size: 32px; line-height: 1; letter-spacing: -0.02em;
+}}
+.sq-small {{
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: #8A9BB0; letter-spacing: 0.06em;
+}}
+</style>
+<div class="sq-grid">{items}</div>
+"""
+
+
+# ===================================================================
 # GLOSARIO CARD
 # ===================================================================
 def glosario_card(name: str, sym: str, definicion: str, formula: str,
