@@ -57,6 +57,47 @@ def cargar_tiros_reales(match_id: int) -> pd.DataFrame:
                   "es_gol", "xg_sb", "distancia", "angulo", "shot_outcome"]]
 
 
+@st.cache_data(show_spinner=False)
+def cargar_dataset_real() -> tuple:
+    """Carga tiros reales de StatsBomb (La Liga 2020/21, 30 partidos).
+    Retorna (distancia, angulo, gol, xg) con el mismo formato que generar_tiros().
+    Fallback a datos sintéticos si StatsBomb no está disponible."""
+    if not STATSBOMB_OK:
+        return generar_tiros(800)
+    try:
+        partidos = sb.matches(competition_id=11, season_id=90)
+        tiros_list = []
+        for match_id in partidos["match_id"].head(30):
+            try:
+                eventos = sb.events(match_id=int(match_id))
+                shots = eventos[eventos["type"] == "Shot"].copy()
+                if len(shots):
+                    tiros_list.append(shots)
+            except Exception:
+                continue
+        if not tiros_list:
+            return generar_tiros(800)
+        df = pd.concat(tiros_list, ignore_index=True)
+        locs = df["location"].dropna()
+        df = df.loc[locs.index].copy()
+        df["x_sb"] = locs.apply(lambda v: v[0])
+        df["y_sb"] = locs.apply(lambda v: v[1])
+        # StatsBomb: campo 120x80, arco en x=120, y=36-44 (centro y=40)
+        dx = 120.0 - df["x_sb"]
+        dy = (df["y_sb"] - 40.0).abs()
+        distancia = np.sqrt(dx ** 2 + dy ** 2).clip(4, 36).values.astype(float)
+        angulo    = np.degrees(np.arctan2(dx, dy + 0.1)).clip(3, 87).values.astype(float)
+        def _outcome(v):
+            if isinstance(v, dict):
+                return v.get("name", "")
+            return str(v) if pd.notna(v) else ""
+        gol = (df["shot_outcome"].apply(_outcome) == "Goal").astype(float).values
+        xg  = df["shot_statsbomb_xg"].fillna(0.0).values.astype(float)
+        return distancia, angulo, gol, xg
+    except Exception:
+        return generar_tiros(800)
+
+
 # ===================================================================
 # CONFIG
 # ===================================================================
@@ -296,13 +337,15 @@ if _tab_nav != st.session_state._last_tab_nav:
     if _tab_nav:
         st.session_state.nav_tab = _tab_nav
 
-dist_all, ang_all, gol_all, xg_all = generar_tiros(800)
+with st.spinner("Cargando dataset de tiros reales…"):
+    dist_all, ang_all, gol_all, xg_all = cargar_dataset_real()
+N_TIROS = len(gol_all)
 
 
 # ===================================================================
 # HERO
 # ===================================================================
-st.markdown(styles.hero(n_tiros=800, target_acc=85), unsafe_allow_html=True)
+st.markdown(styles.hero(n_tiros=N_TIROS, target_acc=85), unsafe_allow_html=True)
 components.html(styles.hero_js(), height=0)
 
 
@@ -412,10 +455,13 @@ históricos donde se sabe el resultado. Exactamente lo que vas a hacer acá.
 with tab2:
     st.markdown(styles.section_head(
         kicker="03 · Dataset",
-        title="800 tiros sintéticos.",
-        lead="Características basadas en estadísticas reales de Premier League "
-             "y Champions League. Cada tiro tiene distancia + ángulo + resultado."
+        title=f"{N_TIROS} tiros reales de La Liga.",
+        lead="Tiros de 30 partidos de La Liga 2020/21 (StatsBomb open-data). "
+             "Cada tiro tiene distancia + ángulo al arco + resultado real."
     ), unsafe_allow_html=True)
+    if STATSBOMB_OK:
+        st.caption(f"Fuente: StatsBomb open-data · La Liga 2020/21 · "
+                   f"{N_TIROS} tiros de 30 partidos")
 
     n_goles = int(gol_all.sum())
     n_total  = len(gol_all)
@@ -461,8 +507,8 @@ with tab3:
     st.markdown(styles.section_head(
         kicker="04 · Módulo",
         title="Entrenamiento en vivo.",
-        lead="Mirá cómo la red aprende. Cada epoch es una pasada por los 800 tiros, "
-             "y los pesos se ajustan con backpropagation."
+        lead=f"Mirá cómo la red aprende. Cada epoch es una pasada por los {N_TIROS} tiros "
+             "reales de La Liga, y los pesos se ajustan con backpropagation."
     ), unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns(3)
@@ -477,8 +523,8 @@ with tab3:
                                        options=[50, 100, 250, 500, 1000], value=250)
     with c3:
         train_pct = st.slider("% datos para entrenamiento", 60, 90, 80)
-        st.caption(f"Entrenamiento: **{int(800 * train_pct/100)}** tiros · "
-                   f"Validación: **{int(800 * (1-train_pct/100))}** tiros")
+        st.caption(f"Entrenamiento: **{int(N_TIROS * train_pct/100)}** tiros · "
+                   f"Validación: **{int(N_TIROS * (1-train_pct/100))}** tiros")
 
     arch = [2] + [n_neu] * n_ocultas + [1]
     n_params = sum(arch[i]*arch[i+1] + arch[i+1] for i in range(len(arch)-1))
@@ -487,7 +533,7 @@ with tab3:
     b1, b2, b3 = st.columns(3)
     with b1:
         if st.button("🔄 Inicializar red", use_container_width=True):
-            idx = int(800 * train_pct / 100)
+            idx = int(N_TIROS * train_pct / 100)
             X = np.column_stack([dist_all / 36.0, ang_all / 90.0])
             st.session_state.x_train        = X[:idx]
             st.session_state.y_train        = gol_all[:idx]
@@ -1048,13 +1094,16 @@ with tab_real:
                                 line=dict(color="white", width=0.8)),
                     text=hover, hovertemplate="%{text}<extra></extra>",
                 ))
+                _dark = {k: v for k, v in PLOTLY_DARK.items()
+                         if k not in ("xaxis", "yaxis")}
                 fig_cmp.update_layout(
                     title=dict(text="¿Qué tan cerca está tu red de StatsBomb?",
                                font=dict(color=TEXT_1, family="Outfit", size=15)),
-                    xaxis=dict(title="xG StatsBomb",  range=[0, 1]),
-                    yaxis=dict(title="xG tu red",     range=[0, 1], scaleanchor="x"),
-                    height=480, **PLOTLY_DARK,
+                    height=480, **_dark,
                 )
+                fig_cmp.update_xaxes(title_text="xG StatsBomb", range=[0, 1])
+                fig_cmp.update_yaxes(title_text="xG tu red",    range=[0, 1],
+                                     scaleanchor="x")
                 st.plotly_chart(fig_cmp, use_container_width=True)
                 st.caption("Cuanto más cerca de la línea diagonal, mejor aprendió la red. "
                            "Verde = gol real · Rojo = no gol.")
