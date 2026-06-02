@@ -31,15 +31,15 @@ except Exception:
 # ===================================================================
 PARTIDOS_SELECCIONADOS = {
     "La Liga": [
-        ("Barça vs Real Madrid (2011)", 69249),
+        ("Barcelona 5-0 Real Madrid · La Manita (2010)", 69299),
     ],
     "Champions League": [
-        ("Barcelona vs Arsenal (2016)", 7581),
-        ("Liverpool vs Barcelona (2019)", 22912),
+        ("Juventus 1-3 Barcelona · Final UCL (2015)", 18242),
+        ("Tottenham 0-2 Liverpool · Final UCL (2019)", 22912),
     ],
     "Mundial": [
-        ("España vs Alemania (2010)", 7576),
-        ("Argentina vs Francia (2022)", 3869685),
+        ("España 1-1 Alemania · Mundial (2022)", 3857263),
+        ("Argentina 3-3 Francia · Final Mundial (2022)", 3869685),
     ],
 }
 
