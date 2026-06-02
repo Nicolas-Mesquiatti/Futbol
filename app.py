@@ -4,6 +4,8 @@ TP Integrador — Introducción a las Redes Neuronales — Opción B: MLP
 """
 
 import math
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="statsbombpy")
 import streamlit as st
 import streamlit.components.v1 as components
 import numpy as np
@@ -25,21 +27,31 @@ except Exception:
 
 
 # ===================================================================
-# STATSBOMB — partidos abiertos (open-data)
+# STATSBOMB — partidos pre-seleccionados (carga lazy, solo en tab_real)
 # ===================================================================
-PARTIDOS_REALES = {
-    "Messi vs Real Madrid (2011, La Liga)": 69249,
-    "Barcelona vs Arsenal · UCL (2016)":    7581,
-    "España vs Alemania · Mundial 2010":    7576,
+PARTIDOS_SELECCIONADOS = {
+    "La Liga": [
+        ("Barça vs Real Madrid (2011)", 69249),
+    ],
+    "Champions League": [
+        ("Barcelona vs Arsenal (2016)", 7581),
+        ("Liverpool vs Barcelona (2019)", 22912),
+    ],
+    "Mundial": [
+        ("España vs Alemania (2010)", 7576),
+        ("Argentina vs Francia (2022)", 3869685),
+    ],
 }
 
 
 @st.cache_data(show_spinner=False)
-def cargar_tiros_reales(match_id: int) -> pd.DataFrame:
-    """Descarga eventos de StatsBomb open-data y devuelve solo los tiros."""
-    eventos = sb.events(match_id=match_id)
+def cargar_tiros_partido(match_id: int) -> pd.DataFrame:
+    """Descarga eventos de StatsBomb open-data y devuelve solo los tiros del partido."""
+    try:
+        eventos = sb.events(match_id=match_id)
+    except Exception:
+        return pd.DataFrame()
     tiros = eventos[eventos["type"] == "Shot"].copy()
-    # location llega como [x, y] sobre cancha 120x80 → normalizamos a 0..52.5 × 0..68
     locs = tiros["location"].dropna()
     tiros = tiros.loc[locs.index]
     tiros["x_sb"] = locs.apply(lambda v: v[0])
@@ -48,7 +60,6 @@ def cargar_tiros_reales(match_id: int) -> pd.DataFrame:
     tiros["y_cancha"] = tiros["y_sb"] / 80.0 * 68.0
     tiros["es_gol"]   = (tiros["shot_outcome"] == "Goal").astype(int)
     tiros["xg_sb"]    = tiros["shot_statsbomb_xg"].fillna(0.0)
-    # distancia (m) y ángulo (°) usando cancha 52.5 × 68, arco en (0, 34)
     dx = tiros["x_cancha"]
     dy = (tiros["y_cancha"] - 34.0).abs()
     tiros["distancia"] = np.sqrt(dx ** 2 + dy ** 2).clip(4, 36)
@@ -57,105 +68,16 @@ def cargar_tiros_reales(match_id: int) -> pd.DataFrame:
                   "es_gol", "xg_sb", "distancia", "angulo", "shot_outcome"]]
 
 
-@st.cache_data(ttl=3600, show_spinner=False)
-def cargar_todos_los_tiros() -> pd.DataFrame:
-    """Descarga TODOS los tiros del open-data de StatsBomb (todas las
-    competiciones y temporadas gratis). Cacheado 1 hora.
-    Devuelve un DataFrame con: player, minute, distancia, angulo, es_gol,
-    xg_sb, competicion, temporada, match_id, x_sb, y_sb, x_cancha, y_cancha,
-    dentro_area, shot_outcome."""
-    if not STATSBOMB_OK:
-        return pd.DataFrame()
-
-    comps = sb.competitions()
-    rows = []
-    n_partidos_total = 0
-
-    for _, comp in comps.iterrows():
-        cid, sid = int(comp["competition_id"]), int(comp["season_id"])
-        cname = str(comp["competition_name"])
-        sname = str(comp["season_name"])
-        try:
-            partidos = sb.matches(competition_id=cid, season_id=sid)
-        except Exception:
-            continue
-
-        for mid in partidos["match_id"].tolist():
-            try:
-                eventos = sb.events(match_id=int(mid))
-            except Exception:
-                continue
-            shots = eventos[eventos["type"] == "Shot"]
-            if len(shots) == 0:
-                continue
-            n_partidos_total += 1
-            for _, s in shots.iterrows():
-                loc = s.get("location")
-                if not isinstance(loc, (list, tuple)) or len(loc) < 2:
-                    continue
-                outcome = s.get("shot_outcome")
-                if isinstance(outcome, dict):
-                    outcome = outcome.get("name", "")
-                rows.append({
-                    "player":       s.get("player", ""),
-                    "minute":       s.get("minute", 0),
-                    "x_sb":         float(loc[0]),
-                    "y_sb":         float(loc[1]),
-                    "es_gol":       1 if outcome == "Goal" else 0,
-                    "xg_sb":        float(s.get("shot_statsbomb_xg") or 0.0),
-                    "shot_outcome": outcome or "",
-                    "competicion":  cname,
-                    "temporada":    sname,
-                    "match_id":     int(mid),
-                })
-
-    if not rows:
-        return pd.DataFrame()
-
-    df = pd.DataFrame(rows)
-    # Coords cancha-app (52.5 x 68) desde StatsBomb (120 x 80, arco x=120 y=40)
-    df["x_cancha"]  = (120.0 - df["x_sb"]) / 120.0 * 52.5
-    df["y_cancha"]  = df["y_sb"] / 80.0 * 68.0
-    dx = 120.0 - df["x_sb"]
-    dy = (df["y_sb"] - 40.0).abs()
-    df["distancia"] = np.sqrt(dx ** 2 + dy ** 2).clip(4, 36)
-    df["angulo"]    = np.degrees(np.arctan2(dx, dy + 0.1)).clip(3, 87)
-    # Dentro del área grande: SB x >= 102 (18 yds del arco)
-    df["dentro_area"] = (df["x_sb"] >= 102.0).astype(int)
-    df.attrs["n_partidos"] = n_partidos_total
-    return df
-
-
 @st.cache_resource(show_spinner=False)
-def entrenar_mlp_competicion(comp_name: str, distancia: tuple, angulo: tuple,
-                             gol: tuple) -> "MLP":
-    """Entrena un MLP [2,16,16,1] sobre los tiros de UNA competición.
-    Cacheado por comp_name + datos (tuplas son hasheables)."""
-    X = np.column_stack([
-        np.asarray(distancia) / 36.0,
-        np.asarray(angulo)    / 90.0,
-    ])
+def entrenar_mlp_partido(match_id: int, distancia: tuple, angulo: tuple,
+                         gol: tuple) -> "MLP":
+    """Entrena un MLP [2,16,16,1] sobre los tiros de UN partido. Cacheado por match_id."""
+    X = np.column_stack([np.asarray(distancia) / 36.0, np.asarray(angulo) / 90.0])
     y = np.asarray(gol, dtype=float)
     net = MLP([2, 16, 16, 1], lr=0.03, seed=123)
     for _ in range(1500):
-        net.train_epoch(X, y, batch_size=64)
+        net.train_epoch(X, y, batch_size=32)
     return net
-
-
-@st.cache_data(ttl=3600, show_spinner=False)
-def cargar_dataset_real() -> tuple:
-    """Dataset para entrenar la red principal (Cómo funciona / Entrenar la red).
-    Usa el dataset completo si está disponible; fallback a sintético."""
-    try:
-        df = cargar_todos_los_tiros()
-        if len(df) >= 200:
-            return (df["distancia"].values.astype(float),
-                    df["angulo"].values.astype(float),
-                    df["es_gol"].values.astype(float),
-                    df["xg_sb"].values.astype(float))
-    except Exception:
-        pass
-    return generar_tiros(800)
 
 
 # ===================================================================
@@ -397,9 +319,8 @@ if _tab_nav != st.session_state._last_tab_nav:
     if _tab_nav:
         st.session_state.nav_tab = _tab_nav
 
-with st.spinner("Cargando dataset de tiros reales…"):
-    dist_all, ang_all, gol_all, xg_all = cargar_dataset_real()
-N_TIROS = len(gol_all)
+dist_all, ang_all, gol_all, xg_all = generar_tiros(800)
+N_TIROS = 800
 
 
 # ===================================================================
@@ -1038,288 +959,257 @@ with tab7:
 
 
 # ----------------------------------------------------------------
-# TAB EXTRA — DATOS REALES (StatsBomb open-data)
+# TAB EXTRA — DATOS REALES (StatsBomb open-data, carga lazy)
 # ----------------------------------------------------------------
 with tab_real:
     st.markdown(styles.section_head(
         kicker="09 · Datos reales",
         title="Tiros de verdad. Partidos de verdad.",
-        lead="Open-data completo de StatsBomb: cada tiro de cada partido publicado "
-             "gratuitamente. La Liga, Champions, Mundiales masculinos y femeninos, FA WSL."
+        lead="Cinco clásicos del fútbol mundial analizados con StatsBomb open-data. "
+             "Elegí un partido y explorá cada tiro, jugador por jugador."
     ), unsafe_allow_html=True)
 
     if not STATSBOMB_OK:
         st.error("No se pudo importar `statsbombpy`. Verificá `requirements.txt`.")
-        df_all = pd.DataFrame()
     else:
-        with st.spinner("Descargando todas las competiciones de StatsBomb open-data…"):
-            df_all = cargar_todos_los_tiros()
+        # Selector de partido agrupado por competición
+        opciones_flat = []
+        for _comp, _lista in PARTIDOS_SELECCIONADOS.items():
+            for _nombre, _ in _lista:
+                opciones_flat.append(f"{_comp} · {_nombre}")
 
-    if len(df_all) == 0:
-        st.warning("No se pudieron cargar datos reales en este momento.")
-    else:
-        n_partidos = df_all.attrs.get("n_partidos", df_all["match_id"].nunique())
-        n_tiros    = len(df_all)
-        n_comps    = df_all["competicion"].nunique()
-        n_goles    = int(df_all["es_gol"].sum())
+        partido_elegido = st.selectbox("Elegí un partido", opciones_flat)
 
-        # ---------- BARRA DE STATS ----------
-        cs1, cs2, cs3, cs4 = st.columns(4)
-        cs1.metric("Competiciones", f"{n_comps}")
-        cs2.metric("Partidos",      f"{n_partidos:,}")
-        cs3.metric("Tiros",         f"{n_tiros:,}")
-        cs4.metric("Goles",         f"{n_goles:,}")
+        # Encontrar match_id del partido seleccionado
+        match_id_sel = None
+        for _comp, _lista in PARTIDOS_SELECCIONADOS.items():
+            for _nombre, _mid in _lista:
+                if partido_elegido == f"{_comp} · {_nombre}":
+                    match_id_sel = _mid
+                    break
 
-        with st.expander("Competiciones cargadas", expanded=False):
-            resumen = (df_all.groupby(["competicion", "temporada"])
-                       .agg(tiros=("es_gol", "size"),
-                            goles=("es_gol", "sum"),
-                            partidos=("match_id", "nunique"))
-                       .reset_index()
-                       .sort_values(["competicion", "temporada"]))
-            resumen["conversión"] = (resumen["goles"] / resumen["tiros"] * 100).map(
-                lambda v: f"{v:.1f}%")
-            st.dataframe(resumen, use_container_width=True, hide_index=True)
+        if match_id_sel:
+            with st.spinner(f"Cargando tiros de {partido_elegido}…"):
+                df_partido = cargar_tiros_partido(match_id_sel)
 
-        # =================================================================
-        # SECCIÓN — ANÁLISIS POR JUGADOR
-        # =================================================================
-        st.markdown("---")
-        st.markdown(styles.section_head(
-            kicker="Análisis · 01",
-            title="Jugador bajo la lupa.",
-            lead="Elegí un jugador con al menos 20 tiros y mirá su perfil real."
-        ), unsafe_allow_html=True)
-
-        tiros_por_jug = df_all["player"].value_counts()
-        elegibles = tiros_por_jug[tiros_por_jug >= 20].index.tolist()
-        if not elegibles:
-            st.info("No hay jugadores con 20+ tiros en los datos cargados.")
-        else:
-            jug = st.selectbox(f"Jugador ({len(elegibles)} con 20+ tiros)", elegibles)
-            jdf = df_all[df_all["player"] == jug]
-
-            j_tiros = len(jdf)
-            j_goles = int(jdf["es_gol"].sum())
-            j_conv  = j_goles / j_tiros * 100
-            j_xg    = float(jdf["xg_sb"].mean())
-            xg_total = float(jdf["xg_sb"].sum())
-            liga_conv = float(df_all["es_gol"].mean()) * 100
-
-            j1, j2, j3, j4 = st.columns(4)
-            j1.metric("Tiros",         f"{j_tiros}")
-            j2.metric("Goles",         f"{j_goles}")
-            j3.metric("Conversión",    f"{j_conv:.1f}%")
-            j4.metric("xG promedio",   f"{j_xg:.3f}")
-
-            # Cancha con tiros del jugador
-            fig_j = cancha_base(height=480)
-            for es_gol, color, name in [(0, "rgba(255,70,85,0.75)", "No gol"),
-                                        (1, "rgba(0,212,170,0.95)", "Gol ⚽")]:
-                sub = jdf[jdf["es_gol"] == es_gol]
-                if len(sub) == 0:
-                    continue
-                sizes = (sub["xg_sb"] * 45 + 6).clip(5, 36)
-                hover = [
-                    f"<b>{jug}</b><br>{row.competicion} {row.temporada}<br>"
-                    f"Min {row.minute}' · xG {row.xg_sb:.3f}<br>{row.shot_outcome}"
-                    for row in sub.itertuples()
-                ]
-                fig_j.add_trace(go.Scatter(
-                    x=sub["x_cancha"], y=sub["y_cancha"], mode="markers", name=name,
-                    marker=dict(color=color, size=sizes,
-                                line=dict(color="white", width=1)),
-                    text=hover, hovertemplate="%{text}<extra></extra>",
-                ))
-            fig_j.update_layout(
-                showlegend=True,
-                legend=dict(bgcolor="rgba(0,0,0,0.4)", bordercolor=BORDER,
-                            borderwidth=1, font=dict(color=TEXT_1, family="Inter"),
-                            x=0.02, y=0.98),
-                title=dict(text=f"Tiros de {jug}",
-                           font=dict(color=TEXT_1, family="Outfit", size=15)),
-            )
-            st.plotly_chart(fig_j, use_container_width=True)
-
-            # Tabla por temporada
-            st.markdown("**Desglose por temporada**")
-            por_temp = (jdf.groupby(["competicion", "temporada"])
-                        .agg(tiros=("es_gol", "size"),
-                             goles=("es_gol", "sum"),
-                             xg=("xg_sb", "mean"))
-                        .reset_index())
-            por_temp["conversión"] = (por_temp["goles"] / por_temp["tiros"] * 100).map(
-                lambda v: f"{v:.1f}%")
-            por_temp["xG prom"] = por_temp["xg"].map(lambda v: f"{v:.3f}")
-            st.dataframe(por_temp[["competicion", "temporada", "tiros", "goles",
-                                    "conversión", "xG prom"]],
-                         use_container_width=True, hide_index=True)
-
-            # Comparación clínico vs desperdicia
-            diff = j_conv - liga_conv
-            if diff >= 0:
-                st.success(f"**{jug}** convierte el **{j_conv:.1f}%** vs promedio "
-                           f"general **{liga_conv:.1f}%** ({diff:+.1f}pp).")
+            if len(df_partido) == 0:
+                st.warning("No se pudieron cargar los tiros de este partido.")
             else:
-                st.warning(f"**{jug}** convierte el **{j_conv:.1f}%** vs promedio "
-                           f"general **{liga_conv:.1f}%** ({diff:+.1f}pp).")
+                n_tiros_p = len(df_partido)
+                n_goles_p = int(df_partido["es_gol"].sum())
+                xg_prom_p = float(df_partido["xg_sb"].mean())
+                conv_p    = n_goles_p / n_tiros_p * 100
 
-            # xG real vs convertido
-            xg_per_shot = j_xg
-            sobre_xg = (j_conv / 100) - xg_per_shot
-            pct = sobre_xg * 100
-            if sobre_xg > 0.02:
-                st.info(f"🎯 **Jugador clínico**: supera su xG por **{pct:+.1f}pp**. "
-                        f"Convierte más de lo que se esperaría dada la calidad de sus chances.")
-            elif sobre_xg < -0.02:
-                st.error(f"🪦 **Desperdicia chances**: queda **{abs(pct):.1f}pp** debajo "
-                         f"de su xG. La calidad estaba; la definición no.")
-            else:
-                st.info(f"⚖️ Convierte casi exactamente lo que su xG predice ({pct:+.1f}pp).")
+                pm1, pm2, pm3, pm4 = st.columns(4)
+                pm1.metric("Tiros",       f"{n_tiros_p}")
+                pm2.metric("Goles",       f"{n_goles_p}")
+                pm3.metric("Conversión",  f"{conv_p:.1f}%")
+                pm4.metric("xG promedio", f"{xg_prom_p:.3f}")
 
-        # =================================================================
-        # SECCIÓN — SABÍAS QUE (datos reales calculados)
-        # =================================================================
-        st.markdown("---")
-        st.markdown(styles.section_head(
-            kicker="Análisis · 02",
-            title="Sabías que…",
-            lead="Curiosidades calculadas al vuelo desde el dataset real cargado arriba."
-        ), unsafe_allow_html=True)
-
-        # Top goleador
-        goleadores = df_all[df_all["es_gol"] == 1]["player"].value_counts()
-        top_jug = goleadores.index[0] if len(goleadores) else "—"
-        top_n   = int(goleadores.iloc[0]) if len(goleadores) else 0
-        top_tiros = int(tiros_por_jug.get(top_jug, 0)) if top_jug != "—" else 0
-
-        # Tiro con mayor xG que NO fue gol
-        nogol = df_all[df_all["es_gol"] == 0]
-        if len(nogol):
-            i_max = nogol["xg_sb"].idxmax()
-            fallado = nogol.loc[i_max]
-            fallado_txt = (f"{fallado['player']} (xG {fallado['xg_sb']:.3f}, "
-                           f"{fallado['competicion']})")
-        else:
-            fallado_txt = "—"
-
-        # Gol más improbable
-        goles = df_all[df_all["es_gol"] == 1]
-        if len(goles):
-            i_min = goles["xg_sb"].idxmin()
-            improb = goles.loc[i_min]
-            improb_txt = (f"{improb['player']} (xG {improb['xg_sb']:.3f}, "
-                          f"{improb['competicion']})")
-        else:
-            improb_txt = "—"
-
-        # Competición con mayor conversión
-        conv_comp = (df_all.groupby("competicion")["es_gol"]
-                     .agg(["mean", "size"])
-                     .query("size >= 100"))
-        if len(conv_comp):
-            top_comp = conv_comp["mean"].idxmax()
-            top_pct  = float(conv_comp["mean"].max()) * 100
-        else:
-            top_comp, top_pct = "—", 0.0
-
-        # Fuera vs dentro del área
-        dentro = float(df_all[df_all["dentro_area"] == 1]["es_gol"].mean()) * 100
-        fuera  = float(df_all[df_all["dentro_area"] == 0]["es_gol"].mean()) * 100
-
-        stats_reales = [
-            ("Top goleador", "#00D4AA",
-             f"El jugador con más goles es <b>{top_jug}</b>, con <b>{top_n}</b> "
-             f"goles de <b>{top_tiros}</b> tiros.",
-             f"{top_n}", f"goles · {top_tiros} tiros"),
-            ("La que se escapó", "#FFD700",
-             f"El tiro con mayor xG que <b>no</b> terminó en gol: {fallado_txt}.",
-             f"{fallado['xg_sb']*100:.0f}%" if len(nogol) else "—",
-             "xG · sin gol"),
-            ("Gol imposible", "#FF4655",
-             f"El gol más improbable del dataset: {improb_txt}.",
-             f"{improb['xg_sb']*100:.1f}%" if len(goles) else "—",
-             "xG · y fue gol"),
-            ("Competición más letal", "#5EE8C7",
-             f"La competición con mayor conversión es <b>{top_comp}</b>: "
-             f"<b>{top_pct:.1f}%</b> de los tiros terminan en gol.",
-             f"{top_pct:.1f}%", "conversión"),
-            ("Dentro vs fuera", "#00D4AA",
-             f"Dentro del área se convierte el <b>{dentro:.1f}%</b>; "
-             f"desde afuera, apenas el <b>{fuera:.1f}%</b>.",
-             f"{dentro:.0f}% / {fuera:.0f}%", "dentro / fuera"),
-        ]
-        st.markdown(styles.sabias_que_dinamico(stats_reales), unsafe_allow_html=True)
-
-        # =================================================================
-        # SECCIÓN — SIMULADOR POR COMPETICIÓN
-        # =================================================================
-        st.markdown("---")
-        st.markdown(styles.section_head(
-            kicker="Análisis · 03",
-            title="Una red por competición.",
-            lead="Entrená un MLP solo con los tiros de la competición que elijas. "
-                 "La red aprende los patrones específicos de ese fútbol."
-        ), unsafe_allow_html=True)
-
-        comps_disp = sorted(df_all["competicion"].unique().tolist())
-        comp_sel = st.selectbox("Competición", comps_disp)
-        df_c = df_all[df_all["competicion"] == comp_sel]
-        n_c = len(df_c)
-
-        if n_c < 50:
-            st.warning(f"Solo hay **{n_c}** tiros para {comp_sel}. "
-                       "No hay suficientes datos para entrenar una red estable.")
-        else:
-            with st.spinner(f"Entrenando MLP con {n_c} tiros reales de {comp_sel}…"):
-                net_c = entrenar_mlp_competicion(
-                    comp_sel,
-                    tuple(df_c["distancia"].values.astype(float)),
-                    tuple(df_c["angulo"].values.astype(float)),
-                    tuple(df_c["es_gol"].values.astype(float)),
+                # Cancha con todos los tiros del partido
+                fig_p = cancha_base(height=480)
+                for _es_gol, _color, _name in [
+                    (0, "rgba(255,70,85,0.75)", "No gol"),
+                    (1, "rgba(0,212,170,0.95)", "Gol"),
+                ]:
+                    _sub = df_partido[df_partido["es_gol"] == _es_gol]
+                    if len(_sub) == 0:
+                        continue
+                    _sizes = (_sub["xg_sb"] * 45 + 6).clip(5, 36)
+                    _hover = [
+                        f"<b>{row.player}</b><br>Min {row.minute}' · xG {row.xg_sb:.3f}<br>{row.shot_outcome}"
+                        for row in _sub.itertuples()
+                    ]
+                    fig_p.add_trace(go.Scatter(
+                        x=_sub["x_cancha"], y=_sub["y_cancha"], mode="markers", name=_name,
+                        marker=dict(color=_color, size=_sizes, line=dict(color="white", width=1)),
+                        text=_hover, hovertemplate="%{text}<extra></extra>",
+                    ))
+                fig_p.update_layout(
+                    showlegend=True,
+                    legend=dict(bgcolor="rgba(0,0,0,0.4)", bordercolor=BORDER, borderwidth=1,
+                                font=dict(color=TEXT_1, family="Inter"), x=0.02, y=0.98),
+                    title=dict(text=f"Tiros del partido · {partido_elegido}",
+                               font=dict(color=TEXT_1, family="Outfit", size=15)),
                 )
-            conv_c = float(df_c["es_gol"].mean()) * 100
+                st.plotly_chart(fig_p, use_container_width=True)
 
-            sc1, sc2 = st.columns([3, 2])
-            with sc2:
-                st.markdown("#### Tu tiro")
-                d_sim = st.slider("Distancia al arco (m)", 4, 36, 14, key="comp_d")
-                a_sim = st.slider("Ángulo (°)", 5, 85, 45, key="comp_a")
+                # =================================================================
+                # ANÁLISIS POR JUGADOR
+                # =================================================================
+                st.markdown("---")
+                st.markdown(styles.section_head(
+                    kicker="Análisis · 01",
+                    title="Jugador bajo la lupa.",
+                    lead="Elegí un jugador que tiró en este partido y mirá su perfil."
+                ), unsafe_allow_html=True)
 
-                p_sim = float(net_c.predict_proba(
-                    np.array([[d_sim / 36.0, a_sim / 90.0]]))[0])
-                st.markdown(styles.result_box(p_sim,
-                            label=f"P(gol) en {comp_sel}"),
-                            unsafe_allow_html=True)
-                st.caption(f"En **{comp_sel}** la conversión global es "
-                           f"**{conv_c:.1f}%**. La red estimó **{p_sim*100:.1f}%** "
-                           f"para tu posición.")
+                jugadores_partido = df_partido["player"].value_counts()
+                jug = st.selectbox(
+                    f"Jugador ({len(jugadores_partido)} tiradores en este partido)",
+                    jugadores_partido.index.tolist(),
+                    key="jug_real",
+                )
+                jdf = df_partido[df_partido["player"] == jug]
 
-                # Match real desde la zona del tiro
-                mask_zona = ((df_c["distancia"] - d_sim).abs() < 5) & \
-                            ((df_c["angulo"] - a_sim).abs() < 15)
-                z = df_c[mask_zona]
-                if len(z) >= 5:
-                    g, t = int(z["es_gol"].sum()), len(z)
-                    st.info(f"📊 En **{comp_sel}** se convirtieron **{g}** goles "
-                            f"desde esta zona en **{t}** intentos "
-                            f"({g/t*100:.1f}%).")
+                j_tiros = len(jdf)
+                j_goles = int(jdf["es_gol"].sum())
+                j_xg    = float(jdf["xg_sb"].mean())
+                j_conv  = j_goles / j_tiros * 100 if j_tiros > 0 else 0.0
+                sobre_xg = (j_conv / 100) - j_xg
 
-            with sc1:
-                fig_c = heatmap_xg(net_c, height=500)
-                x_t, y_t = tiros_a_xy(np.array([d_sim]), np.array([a_sim]))
-                fig_c.add_trace(go.Scatter(
-                    x=[float(x_t[0])], y=[float(y_t[0])], mode="markers",
-                    marker=dict(color=ACC_G, size=14,
-                                line=dict(color="white", width=2.5)),
-                    showlegend=False,
-                    hovertemplate=f"{d_sim}m · {a_sim}°<br>"
-                                  f"P(gol): {p_sim:.1%}<extra></extra>",
-                ))
-                fig_c.update_layout(title=dict(
-                    text=f"Mapa de peligro · {comp_sel}",
-                    font=dict(color=TEXT_1, family="Outfit", size=15)))
-                st.plotly_chart(fig_c, use_container_width=True)
+                jj1, jj2, jj3, jj4 = st.columns(4)
+                jj1.metric("Tiros",      f"{j_tiros}")
+                jj2.metric("Goles",      f"{j_goles}")
+                jj3.metric("Conversión", f"{j_conv:.0f}%")
+                jj4.metric("xG prom",   f"{j_xg:.3f}")
+
+                # Cancha solo con los tiros del jugador seleccionado
+                fig_j = cancha_base(height=420)
+                for _es_gol, _color, _name in [
+                    (0, "rgba(255,70,85,0.75)", "No gol"),
+                    (1, "rgba(0,212,170,0.95)", "Gol"),
+                ]:
+                    _sub = jdf[jdf["es_gol"] == _es_gol]
+                    if len(_sub) == 0:
+                        continue
+                    _sizes = (_sub["xg_sb"] * 45 + 6).clip(5, 36)
+                    _hover = [
+                        f"<b>{jug}</b><br>Min {row.minute}' · xG {row.xg_sb:.3f}<br>{row.shot_outcome}"
+                        for row in _sub.itertuples()
+                    ]
+                    fig_j.add_trace(go.Scatter(
+                        x=_sub["x_cancha"], y=_sub["y_cancha"], mode="markers", name=_name,
+                        marker=dict(color=_color, size=_sizes, line=dict(color="white", width=1)),
+                        text=_hover, hovertemplate="%{text}<extra></extra>",
+                    ))
+                fig_j.update_layout(
+                    showlegend=True,
+                    legend=dict(bgcolor="rgba(0,0,0,0.4)", bordercolor=BORDER, borderwidth=1,
+                                font=dict(color=TEXT_1, family="Inter"), x=0.02, y=0.98),
+                    title=dict(text=f"Tiros de {jug} · {partido_elegido}",
+                               font=dict(color=TEXT_1, family="Outfit", size=15)),
+                )
+                st.plotly_chart(fig_j, use_container_width=True)
+
+                if sobre_xg > 0.05:
+                    st.success(f"**{jug}** superó su xG por **{sobre_xg*100:+.1f}pp** en este partido. Estuvo clínico.")
+                elif sobre_xg < -0.05:
+                    st.error(f"**{jug}** quedó **{abs(sobre_xg)*100:.1f}pp** por debajo de su xG. Le faltó definición.")
+                else:
+                    st.info(f"**{jug}** convirtió casi exactamente lo que su xG predecía ({sobre_xg*100:+.1f}pp).")
+
+                # =================================================================
+                # SABÍAS QUE (desde los datos del partido)
+                # =================================================================
+                st.markdown("---")
+                st.markdown(styles.section_head(
+                    kicker="Análisis · 02",
+                    title="Sabías que…",
+                    lead="Datos curiosos generados desde este partido."
+                ), unsafe_allow_html=True)
+
+                _top_jug    = jugadores_partido.index[0]
+                _top_n_tir  = int(jugadores_partido.iloc[0])
+                _top_goles  = int(df_partido[df_partido["player"] == _top_jug]["es_gol"].sum())
+
+                _nogol_p = df_partido[df_partido["es_gol"] == 0]
+                if len(_nogol_p):
+                    _i_max   = _nogol_p["xg_sb"].idxmax()
+                    _fallado = _nogol_p.loc[_i_max]
+                    _fallado_txt = f"{_fallado['player']} (xG {_fallado['xg_sb']:.3f}, min {int(_fallado['minute'])})"
+                else:
+                    _fallado_txt = "—"
+
+                _goles_p = df_partido[df_partido["es_gol"] == 1]
+                if len(_goles_p):
+                    _i_min  = _goles_p["xg_sb"].idxmin()
+                    _improb = _goles_p.loc[_i_min]
+                    _improb_txt = f"{_improb['player']} (xG {_improb['xg_sb']:.3f}, min {int(_improb['minute'])})"
+                else:
+                    _improb_txt = "—"
+
+                _primera = df_partido[df_partido["minute"] <= 45]
+                _segunda = df_partido[df_partido["minute"] > 45]
+                _goles_1 = int(_primera["es_gol"].sum())
+                _goles_2 = int(_segunda["es_gol"].sum())
+
+                stats_partido = [
+                    ("Más activo", "#00D4AA",
+                     f"El jugador con más tiros fue <b>{_top_jug}</b>: "
+                     f"<b>{_top_n_tir}</b> intentos, <b>{_top_goles}</b> goles.",
+                     f"{_top_n_tir}", f"tiros · {_top_goles} goles"),
+                    ("La que se escapó", "#FFD700",
+                     f"El tiro de mayor xG que no fue gol: {_fallado_txt}.",
+                     f"{_fallado['xg_sb']*100:.0f}%" if len(_nogol_p) else "—",
+                     "xG · sin gol"),
+                    ("Gol imposible", "#FF4655",
+                     f"El gol más improbable del partido: {_improb_txt}.",
+                     f"{_improb['xg_sb']*100:.1f}%" if len(_goles_p) else "—",
+                     "xG · y entró"),
+                    ("Primera vs segunda", "#5EE8C7",
+                     f"Primera mitad: <b>{_goles_1}</b> goles de <b>{len(_primera)}</b> tiros. "
+                     f"Segunda mitad: <b>{_goles_2}</b> goles de <b>{len(_segunda)}</b> tiros.",
+                     f"{_goles_1} / {_goles_2}", "goles por mitad"),
+                ]
+                st.markdown(styles.sabias_que_dinamico(stats_partido), unsafe_allow_html=True)
+
+                # =================================================================
+                # SIMULADOR POR PARTIDO
+                # =================================================================
+                st.markdown("---")
+                st.markdown(styles.section_head(
+                    kicker="Análisis · 03",
+                    title="Red entrenada con este partido.",
+                    lead="Un MLP entrenado solo con los tiros de este encuentro. "
+                         "La red aprende los patrones específicos de este partido."
+                ), unsafe_allow_html=True)
+
+                if n_tiros_p < 20:
+                    st.warning(f"Solo hay **{n_tiros_p}** tiros. "
+                               "No hay suficientes datos para entrenar una red estable.")
+                else:
+                    with st.spinner(f"Entrenando MLP con {n_tiros_p} tiros…"):
+                        net_partido = entrenar_mlp_partido(
+                            match_id_sel,
+                            tuple(df_partido["distancia"].values.astype(float)),
+                            tuple(df_partido["angulo"].values.astype(float)),
+                            tuple(df_partido["es_gol"].values.astype(float)),
+                        )
+
+                    sc1, sc2 = st.columns([3, 2])
+                    with sc2:
+                        st.markdown("#### Tu tiro")
+                        d_sim_p = st.slider("Distancia al arco (m)", 4, 36, 14, key="partido_d")
+                        a_sim_p = st.slider("Ángulo (°)", 5, 85, 45, key="partido_a")
+
+                        p_sim_p = float(net_partido.predict_proba(
+                            np.array([[d_sim_p / 36.0, a_sim_p / 90.0]]))[0])
+                        st.markdown(styles.result_box(p_sim_p, label="P(gol) en este partido"),
+                                    unsafe_allow_html=True)
+
+                        _mask_z = ((df_partido["distancia"] - d_sim_p).abs() < 5) & \
+                                  ((df_partido["angulo"] - a_sim_p).abs() < 15)
+                        _z = df_partido[_mask_z]
+                        if len(_z) >= 3:
+                            _g_z, _t_z = int(_z["es_gol"].sum()), len(_z)
+                            st.info(f"En este partido se convirtieron **{_g_z}** goles "
+                                    f"desde esta zona en **{_t_z}** intentos "
+                                    f"({_g_z/_t_z*100:.1f}%).")
+
+                    with sc1:
+                        fig_cp = heatmap_xg(net_partido, height=500)
+                        x_tp, y_tp = tiros_a_xy(np.array([d_sim_p]), np.array([a_sim_p]))
+                        fig_cp.add_trace(go.Scatter(
+                            x=[float(x_tp[0])], y=[float(y_tp[0])], mode="markers",
+                            marker=dict(color=ACC_G, size=14, line=dict(color="white", width=2.5)),
+                            showlegend=False,
+                            hovertemplate=f"{d_sim_p}m · {a_sim_p}°<br>P(gol): {p_sim_p:.1%}<extra></extra>",
+                        ))
+                        fig_cp.update_layout(title=dict(
+                            text=f"Mapa de peligro · {partido_elegido}",
+                            font=dict(color=TEXT_1, family="Outfit", size=15)))
+                        st.plotly_chart(fig_cp, use_container_width=True)
 
 
 # ----------------------------------------------------------------
