@@ -1348,6 +1348,59 @@ def injury_feature_table(minutos: float, dias: float, edad: float,
 # ===================================================================
 # SABÍAS QUE... CARDS  (curiosidades reales del fútbol + analytics)
 # ===================================================================
+def sabias_que_dinamico(items: list) -> str:
+    """Grid de cards generadas con datos calculados al vuelo.
+    items: lista de tuplas (titulo, color, html_text, big_stat, small_label)."""
+    cards_html = ""
+    for title, color, text, big, small in items:
+        cards_html += f"""
+<div class="sq-card">
+  <div class="sq-head" style="color:{color};">{title}</div>
+  <p class="sq-text">{text}</p>
+  <div class="sq-stat">
+    <div class="sq-big" style="color:{color};">{big}</div>
+    <div class="sq-small">{small}</div>
+  </div>
+</div>"""
+    return f"""
+<style>
+.sq-grid {{
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  margin: 8px 0 12px;
+}}
+@media (max-width: 980px) {{ .sq-grid {{ grid-template-columns: repeat(2, 1fr); }} }}
+@media (max-width: 560px) {{ .sq-grid {{ grid-template-columns: 1fr; }} }}
+.sq-card {{
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), #1A1A2E;
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+  padding: 22px 22px 18px; display: flex; flex-direction: column;
+  transition: border-color .25s, transform .25s;
+}}
+.sq-card:hover {{ border-color: rgba(255,255,255,0.16); transform: translateY(-2px); }}
+.sq-head {{
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: 12px;
+}}
+.sq-text {{
+  color: #FFFFFF; font-size: 14px; line-height: 1.6; margin: 0 0 16px; flex: 1;
+}}
+.sq-stat {{
+  border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;
+  display: flex; align-items: baseline; gap: 12px;
+}}
+.sq-big {{
+  font-family: 'Outfit', sans-serif; font-weight: 800;
+  font-size: 30px; line-height: 1; letter-spacing: -0.02em;
+}}
+.sq-small {{
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: #8A9BB0; letter-spacing: 0.06em;
+}}
+</style>
+<div class="sq-grid">{cards_html}</div>
+"""
+
+
 def sabias_que_cards() -> str:
     """Grid de cards con curiosidades reales sobre analytics en clubes top."""
     cards = [
