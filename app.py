@@ -81,6 +81,39 @@ def entrenar_mlp_partido(match_id: int, distancia: tuple, angulo: tuple,
 
 
 # ===================================================================
+# LIVERPOOL FC — carga de CSVs y MLP por jugador
+# ===================================================================
+import pathlib as _pathlib
+_DATA_DIR = _pathlib.Path(__file__).parent / "data"
+
+@st.cache_data(show_spinner=False)
+def cargar_shots_lfc() -> pd.DataFrame:
+    df = pd.read_csv(_DATA_DIR / "03_shots_liverpool_2024_25_synthetic_event_level.csv")
+    df["x_cancha"] = (120.0 - df["x_120"]) / 120.0 * 52.5
+    df["y_cancha"] = df["y_80"] / 80.0 * 68.0
+    return df
+
+@st.cache_data(show_spinner=False)
+def cargar_fouls_lfc() -> pd.DataFrame:
+    return pd.read_csv(_DATA_DIR / "05_cards_fouls_liverpool_2024_25_synthetic_event_level.csv")
+
+@st.cache_data(show_spinner=False)
+def cargar_plantilla_lfc() -> pd.DataFrame:
+    return pd.read_csv(_DATA_DIR / "01_players_real_baseline_bdfutbol_2024_25.csv")
+
+@st.cache_resource(show_spinner=False)
+def entrenar_mlp_jugador_lfc(player_name: str, dist_t: tuple,
+                              ang_t: tuple, gol_t: tuple) -> "MLP":
+    X = np.column_stack([np.asarray(dist_t) / 55.0, np.asarray(ang_t) / 90.0])
+    y = np.asarray(gol_t, dtype=float)
+    net = MLP([2, 16, 16, 1], lr=0.05, seed=99)
+    bs = max(4, min(32, len(gol_t) // 4))
+    for _ in range(1500):
+        net.train_epoch(X, y, batch_size=bs)
+    return net
+
+
+# ===================================================================
 # CONFIG
 # ===================================================================
 st.set_page_config(
@@ -223,6 +256,37 @@ def scatter_tiros(distancia, angulo, gol, height: int = 500) -> go.Figure:
     return fig
 
 
+def heatmap_xg_lfc(mlp: MLP, height: int = 440) -> go.Figure:
+    """Heatmap para el MLP de Liverpool (normaliza distancia con /55 en vez de /36)."""
+    fig = cancha_base(height=height)
+    xs = np.linspace(1, 50, 80)
+    ys = np.linspace(2, 66, 60)
+    XX, YY = np.meshgrid(xs, ys)
+    dist_grid = np.sqrt(XX**2 + (YY - 34)**2)
+    ang_grid  = np.degrees(np.arctan2(XX, np.abs(YY - 34) + 0.1))
+    X_grid = np.column_stack([dist_grid.flatten() / 55.0, ang_grid.flatten() / 90.0])
+    proba = mlp.predict_proba(X_grid).reshape(XX.shape)
+    fig.add_trace(go.Contour(
+        x=xs, y=ys, z=proba,
+        colorscale=[
+            [0.0,  "rgba(255,70,85,0.00)"],
+            [0.15, "rgba(255,70,85,0.35)"],
+            [0.35, "rgba(255,215,0,0.30)"],
+            [0.55, "rgba(0,212,170,0.40)"],
+            [1.0,  "rgba(0,212,170,0.65)"],
+        ],
+        contours=dict(start=0, end=1, size=0.08, showlines=False, coloring="heatmap"),
+        showscale=True,
+        colorbar=dict(
+            title=dict(text="P(gol)", font=dict(color=TEXT_2, family="JetBrains Mono")),
+            tickfont=dict(color=TEXT_2, family="JetBrains Mono", size=10),
+            len=0.55, x=1.02, thickness=10, outlinewidth=0, tickformat=".0%",
+        ),
+        hovertemplate="P(gol): %{z:.1%}<extra></extra>",
+    ))
+    return fig
+
+
 # ===================================================================
 # GLOSARIO
 # ===================================================================
@@ -333,10 +397,10 @@ components.html(styles.hero_js(), height=0)
 # ===================================================================
 # TABS
 # ===================================================================
-tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_real, tab8 = st.tabs([
+tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_real, tab_lfc, tab8 = st.tabs([
     "Introducción", "Cómo funciona", "Los datos", "Entrenar la red",
     "Simulador xG", "Árbitro IA", "Titular o Suplente", "¿Se lesiona?",
-    "Datos Reales", "Glosario",
+    "Datos Reales", "Liverpool FC", "Glosario",
 ])
 
 # JS de navegación: hero buttons (via query param) y Inicializar (just_initialized)
@@ -1210,6 +1274,282 @@ with tab_real:
                             text=f"Mapa de peligro · {partido_elegido}",
                             font=dict(color=TEXT_1, family="Outfit", size=15)))
                         st.plotly_chart(fig_cp, use_container_width=True)
+
+
+# ----------------------------------------------------------------
+# TAB LFC — LIVERPOOL FC
+# ----------------------------------------------------------------
+with tab_lfc:
+    st.markdown(styles.section_head(
+        kicker="10 · Liverpool FC",
+        title="El equipo bajo la lupa.",
+        lead="Datos sintéticos del Liverpool 2024-25 generados con distribuciones "
+             "reales de tiro, faltas y tarjetas. Tres redes neuronales, un equipo."
+    ), unsafe_allow_html=True)
+
+    _df_shots = cargar_shots_lfc()
+    _df_fouls = cargar_fouls_lfc()
+    _df_squad = cargar_plantilla_lfc()
+
+    # Jugador compartido entre secciones 1 y 2
+    _jugadores_lfc = sorted(_df_shots["player_name"].unique().tolist())
+    _jug_lfc = st.selectbox("Jugador", _jugadores_lfc, key="lfc_jug")
+
+    # ================================================================
+    # SECCIÓN 1 — SIMULADOR DE TIROS
+    # ================================================================
+    st.markdown("---")
+    st.markdown(styles.section_head(
+        kicker="Análisis · 01",
+        title="Simulador de tiros.",
+        lead="La red aprende los patrones de disparo de cada jugador y predice "
+             "la probabilidad de gol desde cualquier posición."
+    ), unsafe_allow_html=True)
+
+    _jdf = _df_shots[_df_shots["player_name"] == _jug_lfc].copy()
+    _n_tiros_jug = len(_jdf)
+    _n_goles_jug = int(_jdf["is_goal"].sum())
+    _xg_prom_jug = float(_jdf["model_probability_goal"].mean())
+
+    _sm1, _sm2, _sm3 = st.columns(3)
+    _sm1.metric("Tiros", f"{_n_tiros_jug}")
+    _sm2.metric("Goles", f"{_n_goles_jug}")
+    _sm3.metric("xG promedio", f"{_xg_prom_jug:.3f}")
+
+    # Cancha con tiros del jugador (coordenadas reales del CSV)
+    _fig_lfc_j = cancha_base(height=450)
+    for _es_g, _col, _nom in [
+        (0, "rgba(255,70,85,0.75)", "No gol"),
+        (1, "rgba(0,212,170,0.95)", "Gol"),
+    ]:
+        _sub = _jdf[_jdf["is_goal"] == _es_g]
+        if len(_sub) == 0:
+            continue
+        _sizes = (_sub["model_probability_goal"] * 45 + 5).clip(4, 40)
+        _hover = [
+            f"<b>{_jug_lfc}</b><br>Min {int(r.minute)}' · "
+            f"Dist {r.distance_to_goal_m:.1f}m · Ángulo {r.open_goal_angle_deg:.1f}°<br>"
+            f"xG {r.model_probability_goal:.3f}"
+            for r in _sub.itertuples()
+        ]
+        _fig_lfc_j.add_trace(go.Scatter(
+            x=_sub["x_cancha"], y=_sub["y_cancha"], mode="markers", name=_nom,
+            marker=dict(color=_col, size=_sizes, line=dict(color="white", width=0.8)),
+            text=_hover, hovertemplate="%{text}<extra></extra>",
+        ))
+    _fig_lfc_j.update_layout(
+        showlegend=True,
+        legend=dict(bgcolor="rgba(0,0,0,0.4)", bordercolor=BORDER, borderwidth=1,
+                    font=dict(color=TEXT_1, family="Inter"), x=0.02, y=0.98),
+        title=dict(text=f"Tiros de {_jug_lfc} · Liverpool 2024-25",
+                   font=dict(color=TEXT_1, family="Outfit", size=15)),
+    )
+
+    # MLP y simulador
+    if _n_tiros_jug < 5:
+        st.warning("Pocos datos para entrenar — resultado poco confiable")
+        st.plotly_chart(_fig_lfc_j, use_container_width=True)
+    else:
+        if _n_tiros_jug < 10:
+            st.warning("Pocos datos para entrenar — resultado poco confiable")
+
+        with st.spinner(f"Entrenando MLP con {_n_tiros_jug} tiros de {_jug_lfc}…"):
+            _net_lfc = entrenar_mlp_jugador_lfc(
+                _jug_lfc,
+                tuple(_jdf["distance_to_goal_m"].values.astype(float)),
+                tuple(_jdf["open_goal_angle_deg"].values.astype(float)),
+                tuple(_jdf["is_goal"].values.astype(float)),
+            )
+
+        _lc1, _lc2 = st.columns([3, 2])
+        with _lc2:
+            st.markdown("#### Configurá el tiro")
+            _dist_lfc = st.slider("Distancia al arco (m)", 1, 50, 15, key="lfc_dist")
+            _ang_lfc  = st.slider("Ángulo del tiro (°)", 1, 90, 40, key="lfc_ang")
+            _X_lfc = np.array([[_dist_lfc / 55.0, _ang_lfc / 90.0]])
+            _p_lfc = float(_net_lfc.predict_proba(_X_lfc)[0])
+            st.markdown(styles.result_box(_p_lfc, label="P(gol)"), unsafe_allow_html=True)
+            st.markdown(
+                f"Según los patrones de **{_jug_lfc}**, desde esta posición "
+                f"la probabilidad de gol es **{_p_lfc:.1%}**"
+            )
+
+        with _lc1:
+            _fig_heat_lfc = heatmap_xg_lfc(_net_lfc, height=450)
+            # Overlay tiros del jugador
+            for _es_g, _col, _nom in [
+                (0, "rgba(255,70,85,0.6)", "No gol"),
+                (1, "rgba(0,212,170,0.9)", "Gol"),
+            ]:
+                _sub = _jdf[_jdf["is_goal"] == _es_g]
+                if len(_sub) == 0:
+                    continue
+                _sizes = (_sub["model_probability_goal"] * 40 + 5).clip(4, 36)
+                _fig_heat_lfc.add_trace(go.Scatter(
+                    x=_sub["x_cancha"], y=_sub["y_cancha"], mode="markers", name=_nom,
+                    marker=dict(color=_col, size=_sizes, line=dict(color="white", width=0.6)),
+                    showlegend=False, hoverinfo="skip",
+                ))
+            # Punto del simulador
+            _x_sim_lfc, _y_sim_lfc = tiros_a_xy(
+                np.array([_dist_lfc]), np.array([_ang_lfc]))
+            _fig_heat_lfc.add_trace(go.Scatter(
+                x=[float(_x_sim_lfc[0])], y=[float(_y_sim_lfc[0])], mode="markers",
+                marker=dict(color=ACC_G, size=14, line=dict(color="white", width=2.5)),
+                showlegend=False,
+                hovertemplate=f"{_dist_lfc}m · {_ang_lfc}°<br>P(gol): {_p_lfc:.1%}<extra></extra>",
+            ))
+            _fig_heat_lfc.update_layout(title=dict(
+                text=f"Mapa de peligro · {_jug_lfc}",
+                font=dict(color=TEXT_1, family="Outfit", size=15)))
+            st.plotly_chart(_fig_heat_lfc, use_container_width=True)
+
+    # ================================================================
+    # SECCIÓN 2 — ÁRBITRO DEL LIVERPOOL
+    # ================================================================
+    st.markdown("---")
+    st.markdown(styles.section_head(
+        kicker="Análisis · 02",
+        title="¿Le sacan amarilla?",
+        lead="El árbitro virtual analiza las faltas históricas del jugador "
+             "y predice si la próxima intervención termina con cartulina."
+    ), unsafe_allow_html=True)
+
+    _fouls_jug = _df_fouls[_df_fouls["player_name"] == _jug_lfc]
+
+    if len(_fouls_jug) == 0:
+        st.info(f"No hay registros de faltas de {_jug_lfc} en el dataset.")
+    else:
+        _total_fouls = len(_fouls_jug)
+        _total_yellow = int(_fouls_jug["is_yellow_card"].sum())
+        _pct_yellow   = _total_yellow / _total_fouls * 100
+
+        _fa1, _fa2, _fa3 = st.columns(3)
+        _fa1.metric("Total faltas",       f"{_total_fouls}")
+        _fa2.metric("Tarjetas amarillas", f"{_total_yellow}")
+        _fa3.metric("% de amarillas",     f"{_pct_yellow:.1f}%")
+
+        # Promedio por 10 faltas
+        _por10 = _total_yellow / _total_fouls * 10
+        st.info(f"**{_jug_lfc}** promedia **{_por10:.1f}** amarillas cada 10 faltas.")
+
+        # Pre-calcular defaults desde los datos del jugador
+        _avg_vel_raw = float(_fouls_jug["referee_strictness_proxy"].mean()) * 10
+        _avg_vel_def = int(np.clip(round(_avg_vel_raw), 1, 10))
+
+        _ZONA_MAP = {
+            "own_half": "propia", "middle_third": "medio",
+            "penalty_area": "rival", "final_third_outside_box": "rival",
+            "wide_final_third": "rival", "six_yard_box": "rival",
+        }
+        _BALL_FOULS = {"normal_contact", "late_tackle", "reckless_tackle"}
+        _zona_opts = ["propia", "medio", "rival"]
+        _most_fd   = _fouls_jug["field_depth"].mode().iloc[0]
+        _zona_def  = _ZONA_MAP.get(_most_fd, "medio")
+        _zona_idx  = _zona_opts.index(_zona_def)
+        _avg_min_def = int(np.clip(round(float(_fouls_jug["minute"].mean())), 1, 90))
+        _most_foul   = _fouls_jug["foul_type"].mode().iloc[0]
+        _ball_def    = int(_most_foul in _BALL_FOULS)  # 0=No, 1=Sí
+
+        # Asegurar que el árbitro esté entrenado
+        if st.session_state.net_ref is None:
+            with st.spinner("Entrenando árbitro virtual…"):
+                st.session_state.net_ref = ref_model.entrenar_modelo_arbitro(
+                    epochs=1500, lr=0.08)
+
+        _net_ref_lfc = st.session_state.net_ref
+
+        _fc1, _fc2 = st.columns([1, 1])
+        with _fc1:
+            st.markdown("#### Factores de la falta")
+            _vel_lfc    = st.slider("Velocidad del impacto", 1, 10, _avg_vel_def, key="lfc_vel")
+            _ball_lfc   = st.radio("¿Fue por la pelota?", ["No", "Sí"],
+                                   index=_ball_def, horizontal=True, key="lfc_ball") == "Sí"
+            _zona_lfc   = st.radio("Zona de la cancha", _zona_opts,
+                                   index=_zona_idx, horizontal=True, key="lfc_zona")
+            _minuto_lfc = st.slider("Minuto del partido", 1, 90, _avg_min_def, key="lfc_min")
+            _score_lfc  = st.slider("Diferencia en el marcador", -3, 3, 0,
+                                    help="Negativo = Liverpool perdiendo", key="lfc_score")
+
+        _zona_num_lfc = {"propia": 0, "medio": 1, "rival": 2}[_zona_lfc]
+        _p_yellow_lfc = ref_model.predecir(_net_ref_lfc, _vel_lfc, _ball_lfc,
+                                           _zona_num_lfc, _minuto_lfc, _score_lfc)
+        with _fc2:
+            st.markdown("#### Veredicto del árbitro")
+            _ref_key_lfc = f"{_vel_lfc}{int(_ball_lfc)}{_zona_lfc}{_minuto_lfc}{_score_lfc}{_p_yellow_lfc:.4f}"
+            st.markdown(
+                styles.referee_scene(_vel_lfc, _ball_lfc, _zona_lfc,
+                                     _minuto_lfc, _score_lfc,
+                                     _p_yellow_lfc >= 0.55,
+                                     render_key=_ref_key_lfc),
+                unsafe_allow_html=True,
+            )
+
+        st.markdown("")
+        st.markdown(styles.result_box(
+            _p_yellow_lfc,
+            verdict_high="🟡 La red saca amarilla",
+            verdict_mid="Decisión dudosa",
+            verdict_low="✅ Sigue el juego",
+            label="P(tarjeta amarilla)",
+        ), unsafe_allow_html=True)
+
+    # ================================================================
+    # SECCIÓN 3 — PLANTILLA REAL 2024-25
+    # ================================================================
+    st.markdown("---")
+    st.markdown(styles.section_head(
+        kicker="Análisis · 03",
+        title="Plantilla 2024-25.",
+        lead="Estadísticas reales de la temporada del Liverpool en la Premier League "
+             "(fuente: BDFutbol)."
+    ), unsafe_allow_html=True)
+
+    _squad_show = (
+        _df_squad[_df_squad["minutes"] > 0]
+        .sort_values("minutes", ascending=False)
+        [["player_name", "position_group", "matches_played_pm",
+          "minutes", "league_goals_outfield", "yellow_cards", "red_cards"]]
+        .rename(columns={
+            "player_name": "Jugador",
+            "position_group": "Pos.",
+            "matches_played_pm": "PJ",
+            "minutes": "Min.",
+            "league_goals_outfield": "Goles",
+            "yellow_cards": "Amarillas",
+            "red_cards": "Rojas",
+        })
+        .reset_index(drop=True)
+    )
+    st.dataframe(_squad_show, use_container_width=True, hide_index=True)
+
+    # Gráfico de barras: goles por jugador
+    _goleadores = _squad_show[_squad_show["Goles"] > 0].sort_values("Goles", ascending=False)
+    if len(_goleadores):
+        _fig_goles = go.Figure(go.Bar(
+            x=_goleadores["Jugador"],
+            y=_goleadores["Goles"],
+            marker=dict(
+                color=_goleadores["Goles"],
+                colorscale=[[0, "rgba(0,212,170,0.5)"], [1, "rgba(0,212,170,1.0)"]],
+                line=dict(color=BG, width=1),
+            ),
+            text=_goleadores["Goles"],
+            textposition="outside",
+            textfont=dict(color=TEXT_1, family="JetBrains Mono", size=11),
+            hovertemplate="%{x}<br>%{y} goles<extra></extra>",
+        ))
+        _fig_goles.update_layout(
+            title=dict(text="Goles en la Premier League 2024-25",
+                       font=dict(color=TEXT_1, family="Outfit", size=15)),
+            xaxis=dict(tickangle=-35, gridcolor="rgba(255,255,255,0.05)",
+                       tickfont=dict(color=TEXT_2, size=11)),
+            yaxis=dict(gridcolor="rgba(255,255,255,0.05)",
+                       tickfont=dict(color=TEXT_2)),
+            height=360,
+            **{k: v for k, v in PLOTLY_DARK.items() if k not in ("xaxis", "yaxis")},
+        )
+        st.plotly_chart(_fig_goles, use_container_width=True)
 
 
 # ----------------------------------------------------------------
