@@ -64,7 +64,7 @@ def entrenar_mlp_jugador_lfc(player_name: str, dist_t: tuple,
 # ===================================================================
 st.set_page_config(
     page_title="xG/Lab · ¿Puede la IA entender el fútbol?",
-    page_icon="⚽",
+    page_icon=":soccer:",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -190,7 +190,7 @@ def scatter_tiros(distancia, angulo, gol, height: int = 500) -> go.Figure:
         marker=dict(color="rgba(255,70,85,0.55)", size=6, symbol="x"),
     ))
     fig.add_trace(go.Scatter(
-        x=x_g, y=y_g, mode="markers", name="Gol ⚽",
+        x=x_g, y=y_g, mode="markers", name="Gol",
         marker=dict(color="rgba(0,212,170,0.9)", size=8,
                     line=dict(color="white", width=1)),
     ))
@@ -426,7 +426,7 @@ Los clubes lo usan para:
 **¿Cómo se construye?** Con una red neuronal entrenada con miles de tiros
 históricos donde se sabe el resultado. Exactamente lo que vas a hacer acá.
 
-> 🔑 La red aprende que ciertos *patrones* (cerca + buen ángulo) son más
+> La red aprende que ciertos *patrones* (cerca + buen ángulo) son más
 > peligrosos que otros, **sin que nadie le explique las reglas del fútbol**.
         """)
     with c2:
@@ -523,7 +523,7 @@ with tab3:
 
     b1, b2, b3 = st.columns(3)
     with b1:
-        if st.button("🔄 Inicializar red", use_container_width=True):
+        if st.button("Inicializar red", use_container_width=True):
             idx = int(N_TIROS * train_pct / 100)
             X = np.column_stack([dist_all / 36.0, ang_all / 90.0])
             st.session_state.x_train        = X[:idx]
@@ -535,7 +535,7 @@ with tab3:
             st.session_state.just_initialized = True
             st.rerun()
     with b2:
-        if st.button(f"▶ Entrenar {epochs_step} epochs", use_container_width=True):
+        if st.button(f"Entrenar {epochs_step} epochs", use_container_width=True):
             if st.session_state.mlp_xg is None:
                 st.warning("Primero inicializá la red.")
             else:
@@ -545,7 +545,7 @@ with tab3:
                 st.session_state.epoch_xg += epochs_step
                 st.rerun()
     with b3:
-        if st.button("🚀 Entrenar hasta 5000", use_container_width=True):
+        if st.button("Entrenar hasta 5000", use_container_width=True):
             if st.session_state.mlp_xg is None:
                 st.warning("Primero inicializá la red.")
             else:
@@ -654,7 +654,7 @@ with tab4:
     ), unsafe_allow_html=True)
 
     if st.session_state.mlp_xg is None:
-        st.warning("⚠️ Primero entrenás la red en la pestaña **Entrenar la red**.")
+        st.warning("Primero entrenás la red en la pestaña **Entrenar la red**.")
     else:
         mlp = st.session_state.mlp_xg
 
@@ -663,8 +663,8 @@ with tab4:
 
         with c_ctrl:
             st.markdown("#### Configurá tu tiro")
-            dist_sim = st.slider("📏 Distancia al arco (m)", 4, 36, 12)
-            ang_sim  = st.slider("📐 Ángulo del tiro (°)", 5, 85, 45,
+            dist_sim = st.slider("Distancia al arco (m)", 4, 36, 12)
+            ang_sim  = st.slider("Ángulo del tiro (°)", 5, 85, 45,
                                  help="90° = de frente · 5° = ángulo muy cerrado")
 
             X_sim = np.array([[dist_sim / 36.0, ang_sim / 90.0]])
@@ -673,19 +673,19 @@ with tab4:
             st.markdown(styles.result_box(proba), unsafe_allow_html=True)
             st.markdown("")
             if proba > 0.5:
-                st.success("⚽ **¡Tirá! Es una buena chance.**")
+                st.success("**¡Tirá! Es una buena chance.**")
             elif proba > 0.25:
-                st.warning("🤔 **Chance moderada — depende de la presión.**")
+                st.warning("**Chance moderada — depende de la presión.**")
             else:
-                st.error("🔴 **Chance baja — buscá mejor posición.**")
+                st.error("**Chance baja — buscá mejor posición.**")
 
             # Goal celebration animation
             st.markdown(styles.goal_celebration(proba), unsafe_allow_html=True)
 
         with c_pitch:
             fig_sim = heatmap_xg(mlp, height=500)
-            x_t, y_t = tiros_a_xy(np.array([dist_sim]), np.array([ang_sim]))
-            cx, cy = float(x_t[0]), float(y_t[0])
+            cx = float(np.clip(dist_sim * math.sin(math.radians(ang_sim)), 2, 50))
+            cy = float(np.clip(34 + dist_sim * math.cos(math.radians(ang_sim)) * 0.3, 5, 63))
 
             # Goal geometry (goal at x=0, posts at y=30.34 and y=37.66)
             G_TOP = (0.0, 37.66)
@@ -759,7 +759,7 @@ with tab4:
                 marker=dict(color=ACC_G, size=13, symbol="circle",
                             line=dict(color="white", width=2.5)),
                 showlegend=False,
-                hovertemplate=f"📍 Posición del tiro: {dist_sim}m · {ang_sim}°<br>xG: {proba:.1%}<extra></extra>",
+                hovertemplate=f"Posicion del tiro: {dist_sim}m — {ang_sim}°<br>xG: {proba:.1%}<extra></extra>",
             ))
             fig_sim.update_layout(title=dict(text="Tu posición en la cancha",
                                              font=dict(color=TEXT_1, family="Outfit", size=16)))
@@ -772,7 +772,7 @@ with tab4:
         for d in [8, 15, 25, 35]:
             for a in [20, 45, 75]:
                 xg_p = float(mlp.predict_proba(np.array([[d / 36.0, a / 90.0]]))[0])
-                cal = "🟢 Alta" if xg_p > 0.4 else ("🟡 Media" if xg_p > 0.15 else "🔴 Baja")
+                cal = "Alta" if xg_p > 0.4 else ("Media" if xg_p > 0.15 else "Baja")
                 rows.append({"Distancia": f"{d} m", "Ángulo": f"{a}°",
                              "xG predicho": f"{xg_p:.3f}", "Calidad": cal})
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
@@ -825,19 +825,19 @@ with tab5:
     with c3:
         st.markdown(styles.result_box(
             p,
-            verdict_high="🟡 La red saca amarilla",
+            verdict_high="La red saca amarilla",
             verdict_mid="Decisión dudosa",
-            verdict_low="✅ Sigue el juego",
+            verdict_low="Sigue el juego",
             label="P(tarjeta amarilla)",
         ), unsafe_allow_html=True)
 
     with c4:
         factor = ref_model.factor_dominante(vel, ball, zona, minuto, score)
-        st.info(f"📊 El factor que más empuja la decisión hacia la amarilla es **{factor}**.")
+        st.info(f"El factor que más empuja la decisión hacia la amarilla es **{factor}**.")
         rows = []
         for v_test in [2, 4, 6, 8, 10]:
             pt = ref_model.predecir(net, v_test, ball, zona, minuto, score)
-            cal = "🟡 Amarilla" if pt >= 0.55 else ("🤔 Dudoso" if pt > 0.30 else "✅ Sin tarjeta")
+            cal = "Amarilla" if pt >= 0.55 else ("Dudoso" if pt > 0.30 else "Sin tarjeta")
             rows.append({"Velocidad": v_test, "P(amarilla)": f"{pt:.0%}", "Decisión": cal})
         st.markdown("**¿Y si solo cambia la velocidad?**")
         st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
@@ -888,16 +888,16 @@ with tab6:
     with c3:
         st.markdown(styles.result_box(
             p_tit,
-            verdict_high="🟢 Sale de titular",
+            verdict_high="Sale de titular",
             verdict_mid="Decisión pareja",
-            verdict_low="🟠 Al banco",
+            verdict_low="Al banco",
             label="P(titular)",
         ), unsafe_allow_html=True)
 
     with c4:
         factor = lineup_model.factor_lineup(
             goals_in, assists_in, pct_in, mins_in, cond_in, edad_in)
-        st.info(f"📊 Lo que más define la decisión es **{factor}**.")
+        st.info(f"Lo que más define la decisión es **{factor}**.")
         st.markdown(
             styles.lineup_feature_table(
                 goals_in, assists_in, pct_in, mins_in, cond_in, edad_in),
@@ -951,16 +951,16 @@ with tab7:
     with c3:
         st.markdown(styles.result_box(
             p_les,
-            verdict_high="🔴 Alto riesgo de lesión",
-            verdict_mid="⚠️ Zona de precaución",
-            verdict_low="🟢 Baja probabilidad",
+            verdict_high="Alto riesgo de lesión",
+            verdict_mid="Zona de precaución",
+            verdict_low="Baja probabilidad",
             label="P(lesión)",
         ), unsafe_allow_html=True)
 
     with c4:
         factor = injury_model.factor_lesion(
             mins_inj, dias_inj, edad_inj, inten_inj, part_inj)
-        st.info(f"📊 El factor que más eleva el riesgo es **{factor}**.")
+        st.info(f"El factor que más eleva el riesgo es **{factor}**.")
         st.markdown(
             styles.injury_feature_table(
                 mins_inj, dias_inj, edad_inj, inten_inj, part_inj),
@@ -1111,9 +1111,8 @@ with tab_lfc:
                     showlegend=False, hoverinfo="skip",
                 ))
             # Marcador de posición del jugador
-            _x_sim_lfc, _y_sim_lfc = tiros_a_xy(
-                np.array([_dist_lfc]), np.array([_ang_lfc]))
-            _cx_lfc, _cy_lfc = float(_x_sim_lfc[0]), float(_y_sim_lfc[0])
+            _cx_lfc = float(np.clip(_dist_lfc * math.sin(math.radians(_ang_lfc)), 2, 50))
+            _cy_lfc = float(np.clip(34 + _dist_lfc * math.cos(math.radians(_ang_lfc)) * 0.3, 5, 63))
             # Línea punteada desde el centro del arco hasta el jugador
             _fig_heat_lfc.add_trace(go.Scatter(
                 x=[0.0, _cx_lfc], y=[34.0, _cy_lfc],
@@ -1133,7 +1132,7 @@ with tab_lfc:
                 x=[_cx_lfc], y=[_cy_lfc], mode="markers",
                 marker=dict(color=ACC_G, size=14, line=dict(color="white", width=2)),
                 showlegend=False,
-                hovertemplate=f"📍 Posición del tiro: {_dist_lfc}m · {_ang_lfc}°<br>P(gol): {_p_lfc:.1%}<extra></extra>",
+                hovertemplate=f"Posicion del tiro: {_dist_lfc}m — {_ang_lfc}°<br>P(gol): {_p_lfc:.1%}<extra></extra>",
             ))
             _fig_heat_lfc.update_layout(title=dict(
                 text=f"Mapa de peligro · {_jug_lfc}",
@@ -1225,9 +1224,9 @@ with tab_lfc:
         st.markdown("")
         st.markdown(styles.result_box(
             _p_yellow_lfc,
-            verdict_high="🟡 La red saca amarilla",
+            verdict_high="La red saca amarilla",
             verdict_mid="Decisión dudosa",
-            verdict_low="✅ Sigue el juego",
+            verdict_low="Sigue el juego",
             label="P(tarjeta amarilla)",
         ), unsafe_allow_html=True)
 

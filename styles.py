@@ -869,7 +869,7 @@ def dataset_stats(n_total: int, n_goles: int) -> str:
   </div>
   <div class="xg-ds-stat">
     <div class="v" style="color:var(--acc-green)">{n_goles}</div>
-    <div class="l">goles ⚽</div>
+    <div class="l">goles</div>
   </div>
   <div class="xg-ds-stat">
     <div class="v" style="color:var(--acc-red)">{n_no_gol}</div>
@@ -978,9 +978,9 @@ def nn_diagram(arch: list, is_training: bool = False) -> str:
 # ===================================================================
 # RESULT BOX
 # ===================================================================
-def result_box(proba: float, verdict_high: str = "⚽ Chance clara",
+def result_box(proba: float, verdict_high: str = "Chance clara",
                verdict_mid: str = "Chance moderada",
-               verdict_low: str = "🔴 Muy difícil",
+               verdict_low: str = "Muy difícil",
                label: str = "Probabilidad de gol") -> str:
     pct = int(round(proba * 100))
     if proba >= 0.5:
@@ -1103,7 +1103,7 @@ animation:gFlash{n} 0.9s ease forwards;">
   <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:54px;color:#00D4AA;
     letter-spacing:-0.02em;line-height:1;text-shadow:0 0 40px rgba(0,212,170,0.9);
     animation:gPop{n} 0.65s cubic-bezier(0.34,1.56,0.64,1) 0.08s both;">
-    ⚽ ¡¡GOOOL!!
+    ¡¡GOOOL!!
   </div>
   <div style="font-family:'JetBrains Mono',monospace;font-size:13px;
     color:rgba(0,212,170,0.7);margin-top:10px;letter-spacing:0.1em;">
@@ -1202,9 +1202,9 @@ def lineup_feature_table(goals: float, assists: float, pct: float,
                          mins: float, cond: float, edad: float) -> str:
     """Table showing each feature value and its rough impact on the titular decision."""
     def imp(score: float) -> str:
-        if score > 0.65: return "🟢 Alto"
-        if score > 0.35: return "🟡 Medio"
-        return "🔴 Bajo"
+        if score > 0.65: return "Alto"
+        if score > 0.35: return "Medio"
+        return "Bajo"
 
     rows = [
         ("Goles / 90 min",           f"{goals:.2f}",    imp(goals / 1.5)),
@@ -1323,9 +1323,9 @@ def injury_feature_table(minutos: float, dias: float, edad: float,
                          inten: float, partidos: float) -> str:
     """Table showing each injury feature value and its risk level."""
     def risk(score: float) -> str:
-        if score > 0.65: return "🔴 Alto"
-        if score > 0.35: return "🟡 Medio"
-        return "🟢 Bajo"
+        if score > 0.65: return "Alto"
+        if score > 0.35: return "Medio"
+        return "Bajo"
 
     rows = [
         ("Minutos últimos 3 partidos",        f"{int(minutos)}'", risk(minutos / 270)),
