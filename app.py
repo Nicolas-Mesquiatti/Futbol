@@ -754,30 +754,30 @@ with tab4:
         with c_pitch:
             fig_sim = heatmap_xg(mlp, height=500)
 
-            # Coordenadas del jugador en la cancha (goal en x=0, y=34)
-            _ang_rad = np.radians(ang_sim)
-            cx = float(np.clip(dist_sim * np.cos(_ang_rad * 0.5), 3, 50))
-            cy = float(np.clip(34 + dist_sim * np.sin((ang_sim - 45) * 0.03), 5, 63))
+            x_jug = float(dist_sim)
+            y_jug = float(34 + (ang_sim - 45) * 0.4)
+            x_jug = max(3.0, min(50.0, x_jug))
+            y_jug = max(5.0, min(63.0, y_jug))
 
-            # Línea punteada desde el arco al jugador
             fig_sim.add_trace(go.Scatter(
-                x=[0, cx], y=[34, cy],
-                mode="lines",
-                line=dict(color="rgba(255,255,255,0.5)", width=1.5, dash="dot"),
-                showlegend=False, hoverinfo="skip",
-            ))
-
-            # Marcador del jugador
-            fig_sim.add_trace(go.Scatter(
-                x=[cx], y=[cy],
+                x=[x_jug], y=[y_jug],
                 mode="markers+text",
-                marker=dict(size=18, color="#00D4AA", symbol="circle",
-                            line=dict(color="white", width=2)),
+                marker=dict(size=20, color="#00D4AA", symbol="circle",
+                            line=dict(color="white", width=3)),
                 text=["JUG"],
-                textposition="bottom center",
-                textfont=dict(color="white", size=9),
-                name="Posicion del tiro",
-                hovertemplate=f"Distancia: {dist_sim}m<br>Angulo: {ang_sim}°<extra></extra>",
+                textposition="top center",
+                textfont=dict(color="white", size=10, family="Arial Black"),
+                name="Jugador",
+                showlegend=False,
+                hovertemplate="Distancia: " + str(dist_sim) +
+                              "m<br>Angulo: " + str(ang_sim) +
+                              "°<extra></extra>",
+            ))
+            fig_sim.add_trace(go.Scatter(
+                x=[0, x_jug], y=[34, y_jug],
+                mode="lines",
+                line=dict(color="rgba(255,255,255,0.6)", width=2, dash="dot"),
+                showlegend=False, hoverinfo="skip",
             ))
 
             fig_sim.update_layout(title=dict(text="Tu posición en la cancha",
@@ -1128,28 +1128,30 @@ with tab_lfc:
                     marker=dict(color=_col, size=_sizes, line=dict(color="white", width=0.6)),
                     showlegend=False, hoverinfo="skip",
                 ))
-            # Coordenadas del jugador
-            _ang_rad_lfc = np.radians(_ang_lfc)
-            _cx_lfc = float(np.clip(_dist_lfc * np.cos(_ang_rad_lfc * 0.5), 3, 50))
-            _cy_lfc = float(np.clip(34 + _dist_lfc * np.sin((_ang_lfc - 45) * 0.03), 5, 63))
-            # Línea punteada desde el arco al jugador
+            _x_jug_lfc = float(_dist_lfc)
+            _y_jug_lfc = float(34 + (_ang_lfc - 45) * 0.4)
+            _x_jug_lfc = max(3.0, min(50.0, _x_jug_lfc))
+            _y_jug_lfc = max(5.0, min(63.0, _y_jug_lfc))
+
             _fig_heat_lfc.add_trace(go.Scatter(
-                x=[0, _cx_lfc], y=[34, _cy_lfc],
-                mode="lines",
-                line=dict(color="rgba(255,255,255,0.5)", width=1.5, dash="dot"),
-                showlegend=False, hoverinfo="skip",
-            ))
-            # Marcador del jugador
-            _fig_heat_lfc.add_trace(go.Scatter(
-                x=[_cx_lfc], y=[_cy_lfc],
+                x=[_x_jug_lfc], y=[_y_jug_lfc],
                 mode="markers+text",
-                marker=dict(size=18, color="#00D4AA", symbol="circle",
-                            line=dict(color="white", width=2)),
+                marker=dict(size=20, color="#00D4AA", symbol="circle",
+                            line=dict(color="white", width=3)),
                 text=["JUG"],
-                textposition="bottom center",
-                textfont=dict(color="white", size=9),
-                name="Posicion del tiro",
-                hovertemplate=f"Distancia: {_dist_lfc}m<br>Angulo: {_ang_lfc}°<extra></extra>",
+                textposition="top center",
+                textfont=dict(color="white", size=10, family="Arial Black"),
+                name="Jugador",
+                showlegend=False,
+                hovertemplate="Distancia: " + str(_dist_lfc) +
+                              "m<br>Angulo: " + str(_ang_lfc) +
+                              "°<extra></extra>",
+            ))
+            _fig_heat_lfc.add_trace(go.Scatter(
+                x=[0, _x_jug_lfc], y=[34, _y_jug_lfc],
+                mode="lines",
+                line=dict(color="rgba(255,255,255,0.6)", width=2, dash="dot"),
+                showlegend=False, hoverinfo="skip",
             ))
             _fig_heat_lfc.update_layout(title=dict(
                 text=f"Mapa de peligro · {_jug_lfc}",
