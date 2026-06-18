@@ -759,7 +759,7 @@ with tab4:
                 marker=dict(color=ACC_G, size=13, symbol="circle",
                             line=dict(color="white", width=2.5)),
                 showlegend=False,
-                hovertemplate=f"Distancia: {dist_sim} m<br>Ángulo: {ang_sim}°<br>xG: {proba:.1%}<extra></extra>",
+                hovertemplate=f"📍 Posición del tiro: {dist_sim}m · {ang_sim}°<br>xG: {proba:.1%}<extra></extra>",
             ))
             fig_sim.update_layout(title=dict(text="Tu posición en la cancha",
                                              font=dict(color=TEXT_1, family="Outfit", size=16)))
@@ -1110,14 +1110,30 @@ with tab_lfc:
                     marker=dict(color=_col, size=_sizes, line=dict(color="white", width=0.6)),
                     showlegend=False, hoverinfo="skip",
                 ))
-            # Punto del simulador
+            # Marcador de posición del jugador
             _x_sim_lfc, _y_sim_lfc = tiros_a_xy(
                 np.array([_dist_lfc]), np.array([_ang_lfc]))
+            _cx_lfc, _cy_lfc = float(_x_sim_lfc[0]), float(_y_sim_lfc[0])
+            # Línea punteada desde el centro del arco hasta el jugador
             _fig_heat_lfc.add_trace(go.Scatter(
-                x=[float(_x_sim_lfc[0])], y=[float(_y_sim_lfc[0])], mode="markers",
-                marker=dict(color=ACC_G, size=14, line=dict(color="white", width=2.5)),
+                x=[0.0, _cx_lfc], y=[34.0, _cy_lfc],
+                mode="lines",
+                line=dict(color="rgba(255,255,255,0.45)", width=1.5, dash="dot"),
+                showlegend=False, hoverinfo="skip",
+            ))
+            # Capas de glow alrededor del punto
+            for _sz, _al in [(52, 0.06), (36, 0.14), (22, 0.28)]:
+                _fig_heat_lfc.add_trace(go.Scatter(
+                    x=[_cx_lfc], y=[_cy_lfc], mode="markers",
+                    marker=dict(color=f"rgba(0,212,170,{_al})", size=_sz),
+                    showlegend=False, hoverinfo="skip",
+                ))
+            # Punto central brillante
+            _fig_heat_lfc.add_trace(go.Scatter(
+                x=[_cx_lfc], y=[_cy_lfc], mode="markers",
+                marker=dict(color=ACC_G, size=14, line=dict(color="white", width=2)),
                 showlegend=False,
-                hovertemplate=f"{_dist_lfc}m · {_ang_lfc}°<br>P(gol): {_p_lfc:.1%}<extra></extra>",
+                hovertemplate=f"📍 Posición del tiro: {_dist_lfc}m · {_ang_lfc}°<br>P(gol): {_p_lfc:.1%}<extra></extra>",
             ))
             _fig_heat_lfc.update_layout(title=dict(
                 text=f"Mapa de peligro · {_jug_lfc}",

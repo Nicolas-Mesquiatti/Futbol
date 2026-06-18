@@ -1447,7 +1447,7 @@ def sabias_que_tab() -> str:
             "un buen jugador y el mejor de la historia.",
             "0.42 g/tiro",
             "vs 0.31 xG esperado",
-            "https://upload.wikimedia.org/wikipedia/commons/1/1a/24701-soccer-ball-icon.png",
+            "https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg",
         ),
         (
             "Brighton usó xG para llegar a Europa",
@@ -1459,7 +1459,7 @@ def sabias_que_tab() -> str:
             "antes de que sus goles lo demostraran.",
             "+£250M",
             "en ventas con xG",
-            "https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_FC.svg",
+            "https://upload.wikimedia.org/wikipedia/en/thumb/f/fd/Brighton_%26_Hove_Albion_FC_%282022%29.svg/200px-Brighton_%26_Hove_Albion_FC_%282022%29.svg.png",
         ),
         (
             "Midtjylland ganó su primera liga con xG",
@@ -1471,7 +1471,7 @@ def sabias_que_tab() -> str:
             "El mismo dueño luego replicó el modelo en Brighton.",
             "1er título",
             "en su historia",
-            "https://upload.wikimedia.org/wikipedia/en/7/79/FC_Midtjylland_logo.svg",
+            "https://upload.wikimedia.org/wikipedia/en/thumb/7/79/FC_Midtjylland_logo.svg/200px-FC_Midtjylland_logo.svg.png",
         ),
     ]
 
@@ -1480,7 +1480,7 @@ def sabias_que_tab() -> str:
         cards_html += f"""
 <div class="sq-card">
   <div class="sq-img-wrap">
-    <img src="{img_url}" alt="" onerror="this.style.display='none'" />
+    <img src="{img_url}" alt="" onerror="this.style.opacity='0.15'" />
   </div>
   <div class="sq-content">
     <div class="sq-head" style="color:{color};">{title}</div>
