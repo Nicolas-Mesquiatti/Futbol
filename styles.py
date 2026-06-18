@@ -1406,16 +1406,11 @@ def sabias_que_tab() -> str:
     def _img(url: str) -> str:
         return f'<img src="{url}" alt="" style="width:100px;height:100px;object-fit:contain;" onerror="this.style.opacity=\'0.15\'" />'
 
-    _fcm_placeholder = (
+    _midtjylland_img = (
         '<div style="width:100px;height:100px;background:#C8102E;border-radius:8px;'
         'display:flex;align-items:center;justify-content:center;">'
         '<span style="color:white;font-weight:700;font-size:22px;font-family:sans-serif;">FCM</span>'
         '</div>'
-    )
-    _midtjylland_img = (
-        '<img src="https://upload.wikimedia.org/wikipedia/en/thumb/7/79/FC_Midtjylland_logo.svg/150px-FC_Midtjylland_logo.svg.png"'
-        ' alt="" style="width:100px;height:100px;object-fit:contain;"'
-        f' onerror="this.outerHTML=\'{_fcm_placeholder}\'" />'
     )
 
     cards = [
