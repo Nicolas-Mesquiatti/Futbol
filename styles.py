@@ -1403,6 +1403,21 @@ def sabias_que_dinamico(items: list) -> str:
 
 def sabias_que_tab() -> str:
     """6 cards sobre casos reales de IA en el fútbol. Layout full-width con imagen + texto."""
+    def _img(url: str) -> str:
+        return f'<img src="{url}" alt="" style="width:100px;height:100px;object-fit:contain;" onerror="this.style.opacity=\'0.15\'" />'
+
+    _fcm_placeholder = (
+        '<div style="width:100px;height:100px;background:#C8102E;border-radius:8px;'
+        'display:flex;align-items:center;justify-content:center;">'
+        '<span style="color:white;font-weight:700;font-size:22px;font-family:sans-serif;">FCM</span>'
+        '</div>'
+    )
+    _midtjylland_img = (
+        '<img src="https://upload.wikimedia.org/wikipedia/en/thumb/7/79/FC_Midtjylland_logo.svg/150px-FC_Midtjylland_logo.svg.png"'
+        ' alt="" style="width:100px;height:100px;object-fit:contain;"'
+        f' onerror="this.outerHTML=\'{_fcm_placeholder}\'" />'
+    )
+
     cards = [
         (
             "Liverpool fichó a Salah con un algoritmo",
@@ -1414,7 +1429,7 @@ def sabias_que_tab() -> str:
             "la Premier League 2020 — su primera liga en 30 años.",
             "2 Champions",
             "ganadas con analytics",
-            "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg",
+            _img("https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg"),
         ),
         (
             "Brentford ascendió sin ojeadores tradicionales",
@@ -1425,7 +1440,7 @@ def sabias_que_tab() -> str:
             "y datos físicos. Resultado: ascenso a la Premier League en 2021.",
             "£0.5M",
             "presupuesto analytics",
-            "https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg",
+            _img("https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg"),
         ),
         (
             "Arsenal diseñó sus córners con datos",
@@ -1436,7 +1451,7 @@ def sabias_que_tab() -> str:
             "en el área estaba calculado de antemano.",
             "#1 PL",
             "goles de córner 2023/24",
-            "https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg",
+            _img("https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg"),
         ),
         (
             "Messi convertía 35% más de lo esperado",
@@ -1447,7 +1462,7 @@ def sabias_que_tab() -> str:
             "un buen jugador y el mejor de la historia.",
             "0.42 g/tiro",
             "vs 0.31 xG esperado",
-            "https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg",
+            _img("https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg"),
         ),
         (
             "Brighton usó xG para llegar a Europa",
@@ -1459,7 +1474,7 @@ def sabias_que_tab() -> str:
             "antes de que sus goles lo demostraran.",
             "+£250M",
             "en ventas con xG",
-            "https://upload.wikimedia.org/wikipedia/en/thumb/f/fd/Brighton_%26_Hove_Albion_FC_%282022%29.svg/200px-Brighton_%26_Hove_Albion_FC_%282022%29.svg.png",
+            _img("https://resources.premierleague.com/premierleague/badges/t36.png"),
         ),
         (
             "Midtjylland ganó su primera liga con xG",
@@ -1471,16 +1486,16 @@ def sabias_que_tab() -> str:
             "El mismo dueño luego replicó el modelo en Brighton.",
             "1er título",
             "en su historia",
-            "https://upload.wikimedia.org/wikipedia/en/thumb/7/79/FC_Midtjylland_logo.svg/200px-FC_Midtjylland_logo.svg.png",
+            _midtjylland_img,
         ),
     ]
 
     cards_html = ""
-    for title, color, text, big, small, img_url in cards:
+    for title, color, text, big, small, img_html in cards:
         cards_html += f"""
 <div class="sq-card">
   <div class="sq-img-wrap">
-    <img src="{img_url}" alt="" onerror="this.style.opacity='0.15'" />
+    {img_html}
   </div>
   <div class="sq-content">
     <div class="sq-head" style="color:{color};">{title}</div>

@@ -685,7 +685,7 @@ with tab4:
         with c_pitch:
             fig_sim = heatmap_xg(mlp, height=500)
             cx = float(np.clip(dist_sim * math.sin(math.radians(ang_sim)), 2, 50))
-            cy = float(np.clip(34 + dist_sim * math.cos(math.radians(ang_sim)) * 0.3, 5, 63))
+            cy = float(np.clip(34 + dist_sim * math.cos(math.radians(ang_sim)) * 0.35, 5, 63))
 
             # Goal geometry (goal at x=0, posts at y=30.34 and y=37.66)
             G_TOP = (0.0, 37.66)
@@ -747,17 +747,15 @@ with tab4:
                 showlegend=False, hoverinfo="skip",
             ))
 
-            # 6. Glowing green dot (layered circles for glow)
-            for sz, alpha in [(54, 0.07), (38, 0.14), (24, 0.28)]:
-                fig_sim.add_trace(go.Scatter(
-                    x=[cx], y=[cy], mode="markers",
-                    marker=dict(color=f"rgba(0,212,170,{alpha})", size=sz, symbol="circle"),
-                    showlegend=False, hoverinfo="skip",
-                ))
+            # 6. Mini jugador
             fig_sim.add_trace(go.Scatter(
-                x=[cx], y=[cy], mode="markers",
-                marker=dict(color=ACC_G, size=13, symbol="circle",
-                            line=dict(color="white", width=2.5)),
+                x=[cx], y=[cy],
+                mode="markers+text",
+                marker=dict(color=ACC_G, size=18, symbol="pentagon",
+                            line=dict(color="white", width=2)),
+                text=["JUG"],
+                textposition="bottom center",
+                textfont=dict(color="white", size=8, family="JetBrains Mono"),
                 showlegend=False,
                 hovertemplate=f"Posicion del tiro: {dist_sim}m — {ang_sim}°<br>xG: {proba:.1%}<extra></extra>",
             ))
@@ -1112,7 +1110,7 @@ with tab_lfc:
                 ))
             # Marcador de posición del jugador
             _cx_lfc = float(np.clip(_dist_lfc * math.sin(math.radians(_ang_lfc)), 2, 50))
-            _cy_lfc = float(np.clip(34 + _dist_lfc * math.cos(math.radians(_ang_lfc)) * 0.3, 5, 63))
+            _cy_lfc = float(np.clip(34 + _dist_lfc * math.cos(math.radians(_ang_lfc)) * 0.35, 5, 63))
             # Línea punteada desde el centro del arco hasta el jugador
             _fig_heat_lfc.add_trace(go.Scatter(
                 x=[0.0, _cx_lfc], y=[34.0, _cy_lfc],
@@ -1120,17 +1118,15 @@ with tab_lfc:
                 line=dict(color="rgba(255,255,255,0.45)", width=1.5, dash="dot"),
                 showlegend=False, hoverinfo="skip",
             ))
-            # Capas de glow alrededor del punto
-            for _sz, _al in [(52, 0.06), (36, 0.14), (22, 0.28)]:
-                _fig_heat_lfc.add_trace(go.Scatter(
-                    x=[_cx_lfc], y=[_cy_lfc], mode="markers",
-                    marker=dict(color=f"rgba(0,212,170,{_al})", size=_sz),
-                    showlegend=False, hoverinfo="skip",
-                ))
-            # Punto central brillante
+            # Mini jugador
             _fig_heat_lfc.add_trace(go.Scatter(
-                x=[_cx_lfc], y=[_cy_lfc], mode="markers",
-                marker=dict(color=ACC_G, size=14, line=dict(color="white", width=2)),
+                x=[_cx_lfc], y=[_cy_lfc],
+                mode="markers+text",
+                marker=dict(color=ACC_G, size=18, symbol="pentagon",
+                            line=dict(color="white", width=2)),
+                text=["JUG"],
+                textposition="bottom center",
+                textfont=dict(color="white", size=8, family="JetBrains Mono"),
                 showlegend=False,
                 hovertemplate=f"Posicion del tiro: {_dist_lfc}m — {_ang_lfc}°<br>P(gol): {_p_lfc:.1%}<extra></extra>",
             ))
