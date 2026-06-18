@@ -1401,6 +1401,121 @@ def sabias_que_dinamico(items: list) -> str:
 """
 
 
+def sabias_que_tab() -> str:
+    """6 cards sobre casos reales de IA en el fútbol para la tab ¿Sabías que?"""
+    cards = [
+        (
+            "Liverpool fichó a Salah con un algoritmo",
+            "#00D4AA",
+            "El departamento de analytics de Liverpool, liderado por Ian Graham (doctor "
+            "en física teórica), identificó a Mohamed Salah y Andy Robertson mediante "
+            "modelos estadísticos de calidad de tiro y presión. Con un presupuesto de "
+            "analytics de solo £1-2M anuales, Liverpool ganó la Champions League 2019 y "
+            "la Premier League 2020 — su primera liga en 30 años.",
+            "2 Champions",
+            "ganadas con analytics",
+        ),
+        (
+            "Brentford ascendió sin ojeadores tradicionales",
+            "#FFD700",
+            "El Brentford FC prescindió de los scouts tradicionales y apostó por un "
+            "modelo de datos puro. Su sistema detecta jugadores subvalorados en mercados "
+            "como Escandinavia y las ligas menores inglesas usando expected assists (xA) "
+            "y datos físicos. Resultado: ascenso a la Premier League en 2021.",
+            "£0.5M",
+            "presupuesto analytics",
+        ),
+        (
+            "Arsenal diseñó sus córners con datos",
+            "#FF4655",
+            "Arteta y su equipo de analytics analizaron miles de situaciones de pelota "
+            "parada para diseñar rutinas específicas. La temporada 2023/24, Arsenal fue "
+            "el equipo con más goles de córner de toda la Premier League. Cada movimiento "
+            "en el área estaba calculado de antemano.",
+            "#1 PL",
+            "goles de córner 2023/24",
+        ),
+        (
+            "Leicester ganó la liga reduciendo lesiones con datos",
+            "#5EE8C7",
+            "Detrás del milagro de Leicester 2015/16 había tecnología Catapult OptimEye "
+            "S5: sensores en los jugadores medían carga física en tiempo real. El equipo "
+            "usó esos datos para personalizar los entrenamientos y mantener a sus figuras "
+            "clave sanas toda la temporada.",
+            "5000/1",
+            "probabilidad de título",
+        ),
+        (
+            "Messi convertía 35% más de lo esperado",
+            "#00D4AA",
+            "En su mejor temporada (2011/12), Messi anotó 50 goles en La Liga. Su xG "
+            "promedio por tiro era 0.31, pero convertía a un ritmo de 0.42 — un 35% "
+            "por encima de lo que cualquier modelo esperaría. Es la diferencia entre "
+            "un buen jugador y el mejor de la historia.",
+            "0.42 g/tiro",
+            "vs 0.31 xG esperado",
+        ),
+        (
+            "PSG analiza los saques de banda rivales",
+            "#FFD700",
+            "El PSG implementó modelos de análisis de saques de banda para predecir "
+            "hacia dónde va la pelota según el lateral del rival. En la temporada "
+            "2022/23 mejoraron su tasa de recuperación inmediata post-saque un 23% "
+            "respecto al año anterior, presionando anticipadamente en la zona correcta.",
+            "+23%",
+            "recuperaciones post-saque",
+        ),
+    ]
+    cards_html = ""
+    for title, color, text, big, small in cards:
+        cards_html += f"""
+<div class="sq-card">
+  <div class="sq-head" style="color:{color};">{title}</div>
+  <p class="sq-text">{text}</p>
+  <div class="sq-stat">
+    <div class="sq-big" style="color:{color};">{big}</div>
+    <div class="sq-small">{small}</div>
+  </div>
+</div>"""
+    return f"""
+<style>
+.sq-grid {{
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+  margin: 8px 0 16px;
+}}
+@media (max-width: 980px) {{ .sq-grid {{ grid-template-columns: repeat(2, 1fr); }} }}
+@media (max-width: 560px) {{ .sq-grid {{ grid-template-columns: 1fr; }} }}
+.sq-card {{
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), #1A1A2E;
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+  padding: 22px 22px 18px; display: flex; flex-direction: column;
+  transition: border-color .25s, transform .25s;
+}}
+.sq-card:hover {{ border-color: rgba(255,255,255,0.18); transform: translateY(-3px); }}
+.sq-head {{
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
+  letter-spacing: 0.01em; margin-bottom: 12px; line-height: 1.4;
+}}
+.sq-text {{
+  color: #FFFFFF; font-size: 13.5px; line-height: 1.65; margin: 0 0 16px; flex: 1;
+}}
+.sq-stat {{
+  border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;
+  display: flex; align-items: baseline; gap: 12px;
+}}
+.sq-big {{
+  font-family: 'Outfit', sans-serif; font-weight: 800;
+  font-size: 28px; line-height: 1; letter-spacing: -0.02em;
+}}
+.sq-small {{
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: #8A9BB0; letter-spacing: 0.06em;
+}}
+</style>
+<div class="sq-grid">{cards_html}</div>
+"""
+
+
 def sabias_que_cards() -> str:
     """Grid de cards con curiosidades reales sobre analytics en clubes top."""
     cards = [
