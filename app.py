@@ -415,7 +415,7 @@ components.html(styles.hero_js(), height=0)
 tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_sabias, tab_lfc, tab_datos, tab8 = st.tabs([
     "Introducción", "Cómo funciona", "Los datos", "Entrenar la red",
     "Simulador xG", "Árbitro IA", "Titular o Suplente", "¿Se lesiona?",
-    "¿Sabías que?", "Liverpool FC", "Datos Reales", "Glosario",
+    "Casos de uso", "Liverpool FC", "Datos Reales", "Glosario",
 ])
 
 # JS de navegación: hero buttons (via query param) y Inicializar (just_initialized)
@@ -753,81 +753,33 @@ with tab4:
 
         with c_pitch:
             fig_sim = heatmap_xg(mlp, height=500)
-            cx = float(np.clip(dist_sim * math.sin(math.radians(ang_sim)), 2, 50))
-            cy = float(np.clip(34 + dist_sim * math.cos(math.radians(ang_sim)) * 0.35, 5, 63))
 
-            # Goal geometry (goal at x=0, posts at y=30.34 and y=37.66)
-            G_TOP = (0.0, 37.66)
-            G_BOT = (0.0, 30.34)
-            G_CTR = (0.0, 34.00)
+            # Coordenadas del jugador en la cancha (goal en x=0, y=34)
+            _ang_rad = np.radians(ang_sim)
+            cx = float(np.clip(dist_sim * np.cos(_ang_rad * 0.5), 3, 50))
+            cy = float(np.clip(34 + dist_sim * np.sin((ang_sim - 45) * 0.03), 5, 63))
 
-            # 1. Filled cone: triangle from goal posts to player position
+            # Línea punteada desde el arco al jugador
             fig_sim.add_trace(go.Scatter(
-                x=[G_TOP[0], cx, G_BOT[0], G_TOP[0]],
-                y=[G_TOP[1], cy, G_BOT[1], G_TOP[1]],
-                fill="toself",
-                fillcolor="rgba(0,212,170,0.12)",
-                line=dict(color="rgba(0,212,170,0.40)", width=1.2),
-                showlegend=False, hoverinfo="skip",
-            ))
-
-            # 2. Dashed line from goal center to player
-            fig_sim.add_trace(go.Scatter(
-                x=[G_CTR[0], cx], y=[G_CTR[1], cy],
+                x=[0, cx], y=[34, cy],
                 mode="lines",
-                line=dict(color="rgba(0,212,170,0.65)", width=1.5, dash="dash"),
+                line=dict(color="rgba(255,255,255,0.5)", width=1.5, dash="dot"),
                 showlegend=False, hoverinfo="skip",
             ))
 
-            # 3. Distance label near midpoint of the dashed line
-            mx = (G_CTR[0] + cx) / 2
-            my = (G_CTR[1] + cy) / 2
-            label_dy = 1.8 if cy >= 34 else -1.8
-            fig_sim.add_trace(go.Scatter(
-                x=[mx], y=[my + label_dy],
-                mode="text",
-                text=[f"{dist_sim} m"],
-                textfont=dict(color="rgba(255,255,255,0.88)", size=11, family="JetBrains Mono"),
-                showlegend=False, hoverinfo="skip",
-            ))
-
-            # 4. Small arc at player position showing the shooting angle
-            a_top = math.atan2(G_TOP[1] - cy, G_TOP[0] - cx)
-            a_bot = math.atan2(G_BOT[1] - cy, G_BOT[0] - cx)
-            a_lo, a_hi = min(a_top, a_bot), max(a_top, a_bot)
-            arc_r = max(1.2, dist_sim * 0.10)
-            arc_angles = np.linspace(a_lo, a_hi, 30)
-            fig_sim.add_trace(go.Scatter(
-                x=cx + arc_r * np.cos(arc_angles),
-                y=cy + arc_r * np.sin(arc_angles),
-                mode="lines",
-                line=dict(color="rgba(0,212,170,0.95)", width=2),
-                showlegend=False, hoverinfo="skip",
-            ))
-
-            # 5. Angle label near the midpoint of the arc
-            a_mid = (a_lo + a_hi) / 2
-            fig_sim.add_trace(go.Scatter(
-                x=[cx + arc_r * 1.9 * math.cos(a_mid)],
-                y=[cy + arc_r * 1.9 * math.sin(a_mid)],
-                mode="text",
-                text=[f"{ang_sim}°"],
-                textfont=dict(color="rgba(255,255,255,0.88)", size=10, family="JetBrains Mono"),
-                showlegend=False, hoverinfo="skip",
-            ))
-
-            # 6. Mini jugador
+            # Marcador del jugador
             fig_sim.add_trace(go.Scatter(
                 x=[cx], y=[cy],
                 mode="markers+text",
-                marker=dict(color=ACC_G, size=18, symbol="pentagon",
+                marker=dict(size=18, color="#00D4AA", symbol="circle",
                             line=dict(color="white", width=2)),
                 text=["JUG"],
                 textposition="bottom center",
-                textfont=dict(color="white", size=8, family="JetBrains Mono"),
-                showlegend=False,
-                hovertemplate=f"Posicion del tiro: {dist_sim}m — {ang_sim}°<br>xG: {proba:.1%}<extra></extra>",
+                textfont=dict(color="white", size=9),
+                name="Posicion del tiro",
+                hovertemplate=f"Distancia: {dist_sim}m<br>Angulo: {ang_sim}°<extra></extra>",
             ))
+
             fig_sim.update_layout(title=dict(text="Tu posición en la cancha",
                                              font=dict(color=TEXT_1, family="Outfit", size=16)))
             st.plotly_chart(fig_sim, use_container_width=True)
@@ -1036,16 +988,15 @@ with tab7:
 
 
 # ----------------------------------------------------------------
-# TAB SABÍAS QUE
+# TAB CASOS DE USO
 # ----------------------------------------------------------------
 with tab_sabias:
     st.markdown(styles.section_head(
-        kicker="09 · Casos reales",
+        kicker="09 · Casos de uso",
         title="La IA que no sale en el marcador.",
-        lead="Detrás de los títulos, los fichajes y los goles hay equipos de analytics "
-             "que trabajan con los mismos modelos que usamos en esta app."
+        lead="Noticias reales del Mundial 2026 y clubes históricos que ganaron con datos."
     ), unsafe_allow_html=True)
-    components.html(styles.sabias_que_tab(), height=1160, scrolling=False)
+    components.html(styles.sabias_que_tab(), height=1700, scrolling=False)
 
 
 # ----------------------------------------------------------------
@@ -1177,27 +1128,28 @@ with tab_lfc:
                     marker=dict(color=_col, size=_sizes, line=dict(color="white", width=0.6)),
                     showlegend=False, hoverinfo="skip",
                 ))
-            # Marcador de posición del jugador
-            _cx_lfc = float(np.clip(_dist_lfc * math.sin(math.radians(_ang_lfc)), 2, 50))
-            _cy_lfc = float(np.clip(34 + _dist_lfc * math.cos(math.radians(_ang_lfc)) * 0.35, 5, 63))
-            # Línea punteada desde el centro del arco hasta el jugador
+            # Coordenadas del jugador
+            _ang_rad_lfc = np.radians(_ang_lfc)
+            _cx_lfc = float(np.clip(_dist_lfc * np.cos(_ang_rad_lfc * 0.5), 3, 50))
+            _cy_lfc = float(np.clip(34 + _dist_lfc * np.sin((_ang_lfc - 45) * 0.03), 5, 63))
+            # Línea punteada desde el arco al jugador
             _fig_heat_lfc.add_trace(go.Scatter(
-                x=[0.0, _cx_lfc], y=[34.0, _cy_lfc],
+                x=[0, _cx_lfc], y=[34, _cy_lfc],
                 mode="lines",
-                line=dict(color="rgba(255,255,255,0.45)", width=1.5, dash="dot"),
+                line=dict(color="rgba(255,255,255,0.5)", width=1.5, dash="dot"),
                 showlegend=False, hoverinfo="skip",
             ))
-            # Mini jugador
+            # Marcador del jugador
             _fig_heat_lfc.add_trace(go.Scatter(
                 x=[_cx_lfc], y=[_cy_lfc],
                 mode="markers+text",
-                marker=dict(color=ACC_G, size=18, symbol="pentagon",
+                marker=dict(size=18, color="#00D4AA", symbol="circle",
                             line=dict(color="white", width=2)),
                 text=["JUG"],
                 textposition="bottom center",
-                textfont=dict(color="white", size=8, family="JetBrains Mono"),
-                showlegend=False,
-                hovertemplate=f"Posicion del tiro: {_dist_lfc}m — {_ang_lfc}°<br>P(gol): {_p_lfc:.1%}<extra></extra>",
+                textfont=dict(color="white", size=9),
+                name="Posicion del tiro",
+                hovertemplate=f"Distancia: {_dist_lfc}m<br>Angulo: {_ang_lfc}°<extra></extra>",
             ))
             _fig_heat_lfc.update_layout(title=dict(
                 text=f"Mapa de peligro · {_jug_lfc}",

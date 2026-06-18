@@ -1402,18 +1402,50 @@ def sabias_que_dinamico(items: list) -> str:
 
 
 def sabias_que_tab() -> str:
-    """6 cards sobre casos reales de IA en el fútbol. Layout full-width con imagen + texto."""
+    """Casos de uso: Mundial 2026 + 5 cards históricas."""
     def _img(url: str) -> str:
-        return f'<img src="{url}" alt="" style="width:100px;height:100px;object-fit:contain;" onerror="this.style.opacity=\'0.15\'" />'
+        return f'<img src="{url}" alt="" style="width:84px;height:84px;object-fit:contain;" onerror="this.style.opacity=\'0.12\'" />'
 
-    _midtjylland_img = (
-        '<div style="width:100px;height:100px;background:#C8102E;border-radius:8px;'
-        'display:flex;align-items:center;justify-content:center;">'
-        '<span style="color:white;font-weight:700;font-size:22px;font-family:sans-serif;">FCM</span>'
-        '</div>'
-    )
+    # ---- Bloque 1: noticias Mundial 2026 ----
+    news_cards = [
+        (
+            "Pochettino usó IA para ganarle a Paraguay",
+            "#00D4AA",
+            "Mauricio Pochettino, director técnico de Estados Unidos en el Mundial 2026, "
+            "utilizó una plataforma de inteligencia artificial que avisa en tiempo real "
+            "qué tan fatigado está cada jugador. Con esa información tomó los cambios en "
+            "el momento justo y Estados Unidos goleó a Paraguay en el debut mundialista.",
+            "Goleada en el debut",
+            "Infobae — 13 Jun 2026",
+        ),
+        (
+            "El primer Mundial donde la IA predice al ganador",
+            "#FFD700",
+            "Por primera vez en la historia de los Mundiales, complejos algoritmos de "
+            "machine learning analizan cada partido en tiempo real para predecir resultados. "
+            "Las selecciones más avanzadas integran modelos similares al que construiste "
+            "en esta app para tomar decisiones tácticas durante los 90 minutos.",
+            "Mundial 2026",
+            "La Gaceta — 14 Jun 2026",
+        ),
+    ]
+    news_html = ""
+    for title, color, text, big, fuente in news_cards:
+        news_html += f"""
+<div class="nc-card" style="border-color:{color}40;">
+  <div class="nc-bar" style="background:{color};"></div>
+  <div class="nc-body">
+    <div class="nc-title" style="color:{color};">{title}</div>
+    <p class="nc-text">{text}</p>
+    <div class="nc-foot">
+      <span class="nc-big" style="color:{color};">{big}</span>
+      <span class="nc-src">{fuente}</span>
+    </div>
+  </div>
+</div>"""
 
-    cards = [
+    # ---- Bloque 2: cards históricas (sin Midtjylland) ----
+    hist_cards = [
         (
             "Liverpool fichó a Salah con un algoritmo",
             "#00D4AA",
@@ -1471,23 +1503,10 @@ def sabias_que_tab() -> str:
             "en ventas con xG",
             _img("https://resources.premierleague.com/premierleague/badges/t36.png"),
         ),
-        (
-            "Midtjylland ganó su primera liga con xG",
-            "#FFD700",
-            "El FC Midtjylland danés fue uno de los primeros clubes del mundo en "
-            "implementar modelos xG de forma sistemática. Usaron el modelo para optimizar "
-            "tiros libres y córners, identificar jugadores subvalorados y tomar decisiones "
-            "de juego en tiempo real. Resultado: ganaron su primer título de la liga danesa. "
-            "El mismo dueño luego replicó el modelo en Brighton.",
-            "1er título",
-            "en su historia",
-            _midtjylland_img,
-        ),
     ]
-
-    cards_html = ""
-    for title, color, text, big, small, img_html in cards:
-        cards_html += f"""
+    hist_html = ""
+    for title, color, text, big, small, img_html in hist_cards:
+        hist_html += f"""
 <div class="sq-card">
   <div class="sq-img-wrap">
     {img_html}
@@ -1512,12 +1531,80 @@ def sabias_que_tab() -> str:
 * {{ box-sizing: border-box; margin: 0; padding: 0; }}
 body {{
   background: transparent;
-  padding: 4px 2px 12px;
+  padding: 4px 2px 16px;
   font-family: 'Outfit', system-ui, sans-serif;
 }}
-.sq-container {{
-  display: flex; flex-direction: column; gap: 14px;
+/* ---- section headers ---- */
+.blk-title {{
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  color: #fff;
+  letter-spacing: -0.02em;
+  margin: 20px 0 4px;
 }}
+.blk-lead {{
+  font-size: 13px;
+  color: #8A9BB0;
+  margin-bottom: 14px;
+  line-height: 1.5;
+}}
+/* ---- news cards (Mundial 2026) ---- */
+.nc-grid {{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 28px;
+}}
+.nc-card {{
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), transparent), #1A1A2E;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  transition: transform .2s;
+}}
+.nc-card:hover {{ transform: translateY(-2px); }}
+.nc-bar {{ width: 4px; flex-shrink: 0; }}
+.nc-body {{ padding: 16px 18px; display: flex; flex-direction: column; gap: 0; flex: 1; }}
+.nc-title {{
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}}
+.nc-text {{
+  color: #FFFFFF;
+  font-size: 12.5px;
+  line-height: 1.65;
+  flex: 1;
+  margin-bottom: 12px;
+}}
+.nc-foot {{
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}}
+.nc-big {{
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}}
+.nc-src {{
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: #5B6B7F;
+  letter-spacing: 0.04em;
+}}
+/* ---- historical cards ---- */
+.sq-container {{ display: flex; flex-direction: column; gap: 14px; }}
 .sq-card {{
   background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent), #1A1A2E;
   border: 1px solid rgba(255,255,255,0.08);
@@ -1529,72 +1616,39 @@ body {{
   align-items: center;
   transition: border-color .25s, transform .2s;
 }}
-.sq-card:hover {{
-  border-color: rgba(255,255,255,0.20);
-  transform: translateY(-2px);
-}}
+.sq-card:hover {{ border-color: rgba(255,255,255,0.20); transform: translateY(-2px); }}
 .sq-img-wrap {{
-  flex-shrink: 0;
-  width: 100px;
-  height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.03);
-  border-radius: 10px;
-  padding: 8px;
+  flex-shrink: 0; width: 100px; height: 100px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.03); border-radius: 10px; padding: 8px;
 }}
-.sq-img-wrap img {{
-  width: 84px;
-  height: 84px;
-  object-fit: contain;
-}}
-.sq-content {{
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}}
+.sq-img-wrap img {{ width: 84px; height: 84px; object-fit: contain; }}
+.sq-content {{ flex: 1; display: flex; flex-direction: column; gap: 0; }}
 .sq-head {{
   font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.4;
-  margin-bottom: 8px;
+  font-size: 13px; font-weight: 700; line-height: 1.4; margin-bottom: 8px;
 }}
-.sq-text {{
-  color: #FFFFFF;
-  font-size: 13.5px;
-  line-height: 1.65;
-  margin-bottom: 14px;
-  flex: 1;
-}}
+.sq-text {{ color: #FFFFFF; font-size: 13.5px; line-height: 1.65; margin-bottom: 14px; flex: 1; }}
 .sq-stat {{
   border-top: 1px solid rgba(255,255,255,0.08);
-  padding-top: 10px;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
+  padding-top: 10px; display: flex; align-items: baseline; gap: 10px;
 }}
-.sq-big {{
-  font-family: 'Outfit', sans-serif;
-  font-weight: 800;
-  font-size: 26px;
-  line-height: 1;
-  letter-spacing: -0.02em;
-}}
-.sq-small {{
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: #8A9BB0;
-  letter-spacing: 0.06em;
-}}
+.sq-big {{ font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 26px; line-height: 1; letter-spacing: -0.02em; }}
+.sq-small {{ font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #8A9BB0; letter-spacing: 0.06em; }}
 </style>
 </head>
 <body>
-<div class="sq-container">
-{cards_html}
-</div>
+  <div class="blk-title">Mundial 2026 — La IA ya juega</div>
+  <div class="blk-lead">Por primera vez en la historia, los directores técnicos toman decisiones en tiempo real con algoritmos.</div>
+  <div class="nc-grid">
+    {news_html}
+  </div>
+
+  <div class="blk-title">Clubes que cambiaron el juego con datos</div>
+  <div class="blk-lead" style="margin-bottom:14px;">&nbsp;</div>
+  <div class="sq-container">
+    {hist_html}
+  </div>
 </body>
 </html>"""
 
