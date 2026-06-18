@@ -1402,7 +1402,7 @@ def sabias_que_dinamico(items: list) -> str:
 
 
 def sabias_que_tab() -> str:
-    """6 cards sobre casos reales de IA en el fútbol para la tab ¿Sabías que?"""
+    """6 cards sobre casos reales de IA en el fútbol. Layout full-width con imagen + texto."""
     cards = [
         (
             "Liverpool fichó a Salah con un algoritmo",
@@ -1414,6 +1414,7 @@ def sabias_que_tab() -> str:
             "la Premier League 2020 — su primera liga en 30 años.",
             "2 Champions",
             "ganadas con analytics",
+            "https://upload.wikimedia.org/wikipedia/en/0/0c/Liverpool_FC.svg",
         ),
         (
             "Brentford ascendió sin ojeadores tradicionales",
@@ -1424,6 +1425,7 @@ def sabias_que_tab() -> str:
             "y datos físicos. Resultado: ascenso a la Premier League en 2021.",
             "£0.5M",
             "presupuesto analytics",
+            "https://upload.wikimedia.org/wikipedia/en/2/2a/Brentford_FC_crest.svg",
         ),
         (
             "Arsenal diseñó sus córners con datos",
@@ -1434,86 +1436,157 @@ def sabias_que_tab() -> str:
             "en el área estaba calculado de antemano.",
             "#1 PL",
             "goles de córner 2023/24",
-        ),
-        (
-            "Leicester ganó la liga reduciendo lesiones con datos",
-            "#5EE8C7",
-            "Detrás del milagro de Leicester 2015/16 había tecnología Catapult OptimEye "
-            "S5: sensores en los jugadores medían carga física en tiempo real. El equipo "
-            "usó esos datos para personalizar los entrenamientos y mantener a sus figuras "
-            "clave sanas toda la temporada.",
-            "5000/1",
-            "probabilidad de título",
+            "https://upload.wikimedia.org/wikipedia/en/5/53/Arsenal_FC.svg",
         ),
         (
             "Messi convertía 35% más de lo esperado",
-            "#00D4AA",
+            "#5EE8C7",
             "En su mejor temporada (2011/12), Messi anotó 50 goles en La Liga. Su xG "
             "promedio por tiro era 0.31, pero convertía a un ritmo de 0.42 — un 35% "
             "por encima de lo que cualquier modelo esperaría. Es la diferencia entre "
             "un buen jugador y el mejor de la historia.",
             "0.42 g/tiro",
             "vs 0.31 xG esperado",
+            "https://upload.wikimedia.org/wikipedia/commons/1/1a/24701-soccer-ball-icon.png",
         ),
         (
-            "PSG analiza los saques de banda rivales",
+            "Brighton usó xG para llegar a Europa",
+            "#00D4AA",
+            "Brighton & Hove Albion, bajo Tony Bloom (jugador profesional de poker y "
+            "experto en datos), usó modelos xG para fichar a Moisés Caicedo y Alexis "
+            "Mac Allister cuando nadie los quería. Ambos fueron vendidos luego por más "
+            "de £250M en total. El xG les dijo que generaban chances de altísima calidad "
+            "antes de que sus goles lo demostraran.",
+            "+£250M",
+            "en ventas con xG",
+            "https://upload.wikimedia.org/wikipedia/en/f/fd/Brighton_%26_Hove_Albion_FC.svg",
+        ),
+        (
+            "Midtjylland ganó su primera liga con xG",
             "#FFD700",
-            "El PSG implementó modelos de análisis de saques de banda para predecir "
-            "hacia dónde va la pelota según el lateral del rival. En la temporada "
-            "2022/23 mejoraron su tasa de recuperación inmediata post-saque un 23% "
-            "respecto al año anterior, presionando anticipadamente en la zona correcta.",
-            "+23%",
-            "recuperaciones post-saque",
+            "El FC Midtjylland danés fue uno de los primeros clubes del mundo en "
+            "implementar modelos xG de forma sistemática. Usaron el modelo para optimizar "
+            "tiros libres y córners, identificar jugadores subvalorados y tomar decisiones "
+            "de juego en tiempo real. Resultado: ganaron su primer título de la liga danesa. "
+            "El mismo dueño luego replicó el modelo en Brighton.",
+            "1er título",
+            "en su historia",
+            "https://upload.wikimedia.org/wikipedia/en/7/79/FC_Midtjylland_logo.svg",
         ),
     ]
+
     cards_html = ""
-    for title, color, text, big, small in cards:
+    for title, color, text, big, small, img_url in cards:
         cards_html += f"""
 <div class="sq-card">
-  <div class="sq-head" style="color:{color};">{title}</div>
-  <p class="sq-text">{text}</p>
-  <div class="sq-stat">
-    <div class="sq-big" style="color:{color};">{big}</div>
-    <div class="sq-small">{small}</div>
+  <div class="sq-img-wrap">
+    <img src="{img_url}" alt="" onerror="this.style.display='none'" />
+  </div>
+  <div class="sq-content">
+    <div class="sq-head" style="color:{color};">{title}</div>
+    <p class="sq-text">{text}</p>
+    <div class="sq-stat">
+      <span class="sq-big" style="color:{color};">{big}</span>
+      <span class="sq-small">{small}</span>
+    </div>
   </div>
 </div>"""
-    return f"""
+
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@400;700;800&display=swap" rel="stylesheet">
 <style>
-.sq-grid {{
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
-  margin: 8px 0 16px;
+* {{ box-sizing: border-box; margin: 0; padding: 0; }}
+body {{
+  background: transparent;
+  padding: 4px 2px 12px;
+  font-family: 'Outfit', system-ui, sans-serif;
 }}
-@media (max-width: 980px) {{ .sq-grid {{ grid-template-columns: repeat(2, 1fr); }} }}
-@media (max-width: 560px) {{ .sq-grid {{ grid-template-columns: 1fr; }} }}
+.sq-container {{
+  display: flex; flex-direction: column; gap: 14px;
+}}
 .sq-card {{
-  background: linear-gradient(180deg, rgba(255,255,255,0.02), transparent), #1A1A2E;
-  border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
-  padding: 22px 22px 18px; display: flex; flex-direction: column;
-  transition: border-color .25s, transform .25s;
+  background: linear-gradient(180deg, rgba(255,255,255,0.025), transparent), #1A1A2E;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 18px 22px;
+  display: flex;
+  flex-direction: row;
+  gap: 20px;
+  align-items: center;
+  transition: border-color .25s, transform .2s;
 }}
-.sq-card:hover {{ border-color: rgba(255,255,255,0.18); transform: translateY(-3px); }}
+.sq-card:hover {{
+  border-color: rgba(255,255,255,0.20);
+  transform: translateY(-2px);
+}}
+.sq-img-wrap {{
+  flex-shrink: 0;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.03);
+  border-radius: 10px;
+  padding: 8px;
+}}
+.sq-img-wrap img {{
+  width: 84px;
+  height: 84px;
+  object-fit: contain;
+}}
+.sq-content {{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}}
 .sq-head {{
-  font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700;
-  letter-spacing: 0.01em; margin-bottom: 12px; line-height: 1.4;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  margin-bottom: 8px;
 }}
 .sq-text {{
-  color: #FFFFFF; font-size: 13.5px; line-height: 1.65; margin: 0 0 16px; flex: 1;
+  color: #FFFFFF;
+  font-size: 13.5px;
+  line-height: 1.65;
+  margin-bottom: 14px;
+  flex: 1;
 }}
 .sq-stat {{
-  border-top: 1px solid rgba(255,255,255,0.08); padding-top: 12px;
-  display: flex; align-items: baseline; gap: 12px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding-top: 10px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
 }}
 .sq-big {{
-  font-family: 'Outfit', sans-serif; font-weight: 800;
-  font-size: 28px; line-height: 1; letter-spacing: -0.02em;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.02em;
 }}
 .sq-small {{
-  font-family: 'JetBrains Mono', monospace; font-size: 11px;
-  color: #8A9BB0; letter-spacing: 0.06em;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #8A9BB0;
+  letter-spacing: 0.06em;
 }}
 </style>
-<div class="sq-grid">{cards_html}</div>
-"""
+</head>
+<body>
+<div class="sq-container">
+{cards_html}
+</div>
+</body>
+</html>"""
 
 
 def sabias_que_cards() -> str:

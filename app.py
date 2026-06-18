@@ -978,7 +978,7 @@ with tab_sabias:
         lead="Detrás de los títulos, los fichajes y los goles hay equipos de analytics "
              "que trabajan con los mismos modelos que usamos en esta app."
     ), unsafe_allow_html=True)
-    st.markdown(styles.sabias_que_tab(), unsafe_allow_html=True)
+    components.html(styles.sabias_que_tab(), height=1160, scrolling=False)
 
 
 # ----------------------------------------------------------------
@@ -1192,8 +1192,9 @@ with tab_lfc:
                                     help="Negativo = Liverpool perdiendo", key="lfc_score")
 
         _zona_num_lfc = {"propia": 0, "medio": 1, "rival": 2}[_zona_lfc]
+        _zona_str_lfc = {0: "propia", 1: "medio", 2: "rival"}[_zona_num_lfc]
         _p_yellow_lfc = ref_model.predecir(_net_ref_lfc, _vel_lfc, _ball_lfc,
-                                           _zona_num_lfc, _minuto_lfc, _score_lfc)
+                                           _zona_str_lfc, _minuto_lfc, _score_lfc)
         with _fc2:
             st.markdown("#### Veredicto del árbitro")
             _ref_key_lfc = f"{_vel_lfc}{int(_ball_lfc)}{_zona_lfc}{_minuto_lfc}{_score_lfc}{_p_yellow_lfc:.4f}"
