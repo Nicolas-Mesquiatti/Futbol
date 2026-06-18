@@ -60,6 +60,75 @@ def entrenar_mlp_jugador_lfc(player_name: str, dist_t: tuple,
 
 
 # ===================================================================
+# DATOS REALES — loaders lazy con cache
+# ===================================================================
+_COMPS_DISPONIBLES = {
+    "La Liga 2020/21":            (11,  90),
+    "La Liga 2019/20":            (11,  42),
+    "La Liga 2018/19":            (11,   4),
+    "La Liga 2015/16":            (11,  27),
+    "La Liga 2014/15":            (11,  26),
+    "La Liga 2013/14":            (11,  25),
+    "La Liga 2012/13":            (11,  24),
+    "La Liga 2011/12":            (11,  23),
+    "Champions League 2018/19":   (16,   4),
+    "Champions League 2017/18":   (16,   1),
+    "Champions League 2015/16":   (16,  27),
+    "Champions League 2014/15":   (16,  26),
+    "Champions League 2012/13":   (16,  22),
+    "Champions League 2011/12":   (16,  21),
+    "Champions League 2009/10":   (16,  21),
+    "FIFA World Cup 2022":        (43, 106),
+    "FIFA World Cup 2018":        (43,   3),
+    "UEFA Euro 2024":             (55, 282),
+    "UEFA Euro 2020":             (55,  43),
+    "Copa América 2024":          (223, 282),
+    "Bundesliga 2023/24":         (9,  281),
+    "Premier League 2015/16":     (2,   27),
+    "Serie A 2015/16":            (12,  27),
+    "Ligue 1 2022/23":            (7,  235),
+}
+
+@st.cache_data(show_spinner=False)
+def _sb_partidos(comp_id: int, season_id: int) -> pd.DataFrame:
+    if not STATSBOMB_OK:
+        return pd.DataFrame()
+    try:
+        df = sb.matches(competition_id=comp_id, season_id=season_id)
+        df = df.sort_values("match_date", ascending=False).reset_index(drop=True)
+        return df
+    except Exception:
+        return pd.DataFrame()
+
+@st.cache_data(show_spinner=False)
+def _sb_tiros(match_id: int) -> pd.DataFrame:
+    if not STATSBOMB_OK:
+        return pd.DataFrame()
+    try:
+        ev = sb.events(match_id=match_id)
+        shots = ev[ev["type"] == "Shot"].copy()
+        if shots.empty:
+            return shots
+        shots["x_c"] = (120.0 - shots["location"].apply(lambda l: l[0])) / 120.0 * 52.5
+        shots["y_c"] = shots["location"].apply(lambda l: l[1]) / 80.0 * 68.0
+        shots["xg"] = pd.to_numeric(shots.get("shot_statsbomb_xg", 0), errors="coerce").fillna(0.0)
+        def _es_gol(o):
+            if isinstance(o, dict): return 1 if o.get("name") == "Goal" else 0
+            return 1 if str(o) == "Goal" else 0
+        shots["gol"] = shots["shot_outcome"].apply(_es_gol)
+        def _str(col):
+            if isinstance(col, dict): return col.get("name", "?")
+            return str(col)
+        shots["jugador"] = shots["player"].apply(_str)
+        shots["equipo"]  = shots["team"].apply(_str)
+        shots["outcome_str"] = shots["shot_outcome"].apply(
+            lambda o: o.get("name", str(o)) if isinstance(o, dict) else str(o))
+        return shots[["x_c","y_c","xg","gol","jugador","equipo","outcome_str","minute"]].reset_index(drop=True)
+    except Exception:
+        return pd.DataFrame()
+
+
+# ===================================================================
 # CONFIG
 # ===================================================================
 st.set_page_config(
@@ -343,10 +412,10 @@ components.html(styles.hero_js(), height=0)
 # ===================================================================
 # TABS
 # ===================================================================
-tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_sabias, tab_lfc, tab8 = st.tabs([
+tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab_sabias, tab_lfc, tab_datos, tab8 = st.tabs([
     "Introducción", "Cómo funciona", "Los datos", "Entrenar la red",
     "Simulador xG", "Árbitro IA", "Titular o Suplente", "¿Se lesiona?",
-    "¿Sabías que?", "Liverpool FC", "Glosario",
+    "¿Sabías que?", "Liverpool FC", "Datos Reales", "Glosario",
 ])
 
 # JS de navegación: hero buttons (via query param) y Inicializar (just_initialized)
@@ -1287,6 +1356,180 @@ with tab_lfc:
 # ----------------------------------------------------------------
 # TAB 8 — GLOSARIO
 # ----------------------------------------------------------------
+# ----------------------------------------------------------------
+# TAB DATOS REALES
+# ----------------------------------------------------------------
+with tab_datos:
+    st.markdown(styles.section_head(
+        kicker="10 · Datos Reales",
+        title="Tiros reales de competición.",
+        lead="Elegí una liga o torneo y un partido. Los datos vienen de StatsBomb Open Data — "
+             "los mismos que usan los clubes profesionales."
+    ), unsafe_allow_html=True)
+
+    if not STATSBOMB_OK:
+        st.warning("StatsBomb no está disponible en este entorno.")
+    else:
+        _dr_c1, _dr_c2 = st.columns([1, 2])
+        with _dr_c1:
+            _comp_sel = st.selectbox(
+                "Competición",
+                list(_COMPS_DISPONIBLES.keys()),
+                key="dr_comp",
+            )
+        _cid, _sid = _COMPS_DISPONIBLES[_comp_sel]
+
+        with st.spinner("Cargando partidos…"):
+            _dr_matches = _sb_partidos(_cid, _sid)
+
+        if _dr_matches.empty:
+            st.error("No se pudieron cargar los partidos.")
+        else:
+            def _match_label(row):
+                return (f"{row['home_team']}  {int(row['home_score'])}-{int(row['away_score'])}"
+                        f"  {row['away_team']}   ({row['match_date']})")
+
+            _dr_labels = [_match_label(r) for _, r in _dr_matches.iterrows()]
+            _dr_ids    = _dr_matches["match_id"].tolist()
+
+            with _dr_c2:
+                _dr_sel_idx = st.selectbox(
+                    "Partido",
+                    range(len(_dr_labels)),
+                    format_func=lambda i: _dr_labels[i],
+                    key="dr_match",
+                )
+
+            _dr_match_row = _dr_matches.iloc[_dr_sel_idx]
+            _dr_mid       = int(_dr_ids[_dr_sel_idx])
+            _dr_home      = str(_dr_match_row["home_team"])
+            _dr_away      = str(_dr_match_row["away_team"])
+            _dr_hs        = int(_dr_match_row["home_score"])
+            _dr_as        = int(_dr_match_row["away_score"])
+            _dr_date      = str(_dr_match_row["match_date"])
+
+            # Resultado visual
+            st.markdown(f"""
+<div style="background:#1A1A2E;border:1px solid rgba(255,255,255,0.1);
+border-radius:12px;padding:20px 32px;margin:12px 0;
+display:flex;align-items:center;justify-content:center;gap:32px;flex-wrap:wrap;">
+  <div style="text-align:right;font-family:'Outfit',sans-serif;">
+    <div style="font-size:15px;color:#8A9BB0;">{_dr_home}</div>
+  </div>
+  <div style="font-family:'Outfit',sans-serif;font-weight:900;font-size:42px;color:#fff;letter-spacing:4px;">
+    {_dr_hs} &ndash; {_dr_as}
+  </div>
+  <div style="text-align:left;font-family:'Outfit',sans-serif;">
+    <div style="font-size:15px;color:#8A9BB0;">{_dr_away}</div>
+  </div>
+  <div style="position:absolute;right:32px;font-size:12px;color:#5B6B7F;">{_dr_date}</div>
+</div>""", unsafe_allow_html=True)
+
+            with st.spinner("Cargando tiros del partido…"):
+                _dr_shots = _sb_tiros(_dr_mid)
+
+            if _dr_shots.empty:
+                st.info("No hay datos de tiros para este partido.")
+            else:
+                _dr_teams  = sorted(_dr_shots["equipo"].unique())
+                _col_home  = ACC_G
+                _col_away  = "#FF4655"
+                _team_cols = {_dr_teams[0]: _col_home,
+                              _dr_teams[1]: _col_away} if len(_dr_teams) >= 2 else {_dr_teams[0]: _col_home}
+
+                # ---- Shot map ----
+                _fig_dr = cancha_base(height=520)
+
+                for _equipo, _col in _team_cols.items():
+                    _sub = _dr_shots[_dr_shots["equipo"] == _equipo]
+                    _goles = _sub[_sub["gol"] == 1]
+                    _no_g  = _sub[_sub["gol"] == 0]
+
+                    if not _no_g.empty:
+                        _fig_dr.add_trace(go.Scatter(
+                            x=_no_g["x_c"], y=_no_g["y_c"],
+                            mode="markers",
+                            name=f"{_equipo} — no gol",
+                            marker=dict(
+                                color=f"rgba({int(_col[1:3],16)},{int(_col[3:5],16)},{int(_col[5:7],16)},0.45)",
+                                size=(_no_g["xg"] * 30 + 5).clip(5, 22),
+                                symbol="circle",
+                                line=dict(color="rgba(255,255,255,0.3)", width=0.8),
+                            ),
+                            customdata=np.column_stack([
+                                _no_g["jugador"], _no_g["xg"].round(3), _no_g["outcome_str"], _no_g["minute"]
+                            ]),
+                            hovertemplate=(
+                                "<b>%{customdata[0]}</b><br>"
+                                "xG: %{customdata[1]}<br>"
+                                "Resultado: %{customdata[2]}<br>"
+                                "Minuto: %{customdata[3]}'<extra></extra>"
+                            ),
+                        ))
+                    if not _goles.empty:
+                        _fig_dr.add_trace(go.Scatter(
+                            x=_goles["x_c"], y=_goles["y_c"],
+                            mode="markers",
+                            name=f"{_equipo} — GOL",
+                            marker=dict(
+                                color=_col,
+                                size=(_goles["xg"] * 30 + 10).clip(10, 28),
+                                symbol="star",
+                                line=dict(color="white", width=1.5),
+                            ),
+                            customdata=np.column_stack([
+                                _goles["jugador"], _goles["xg"].round(3), _goles["minute"]
+                            ]),
+                            hovertemplate=(
+                                "<b>%{customdata[0]}</b> ★ GOL<br>"
+                                "xG: %{customdata[1]}<br>"
+                                "Minuto: %{customdata[2]}'<extra></extra>"
+                            ),
+                        ))
+
+                _fig_dr.update_layout(
+                    title=dict(text=f"Mapa de tiros · {_dr_home} vs {_dr_away}",
+                               font=dict(color=TEXT_1, family="Outfit", size=16)),
+                    showlegend=True,
+                    legend=dict(bgcolor="rgba(0,0,0,0.5)", bordercolor=BORDER,
+                                borderwidth=1, font=dict(color=TEXT_1, family="Inter", size=11)),
+                )
+                st.plotly_chart(_fig_dr, use_container_width=True)
+
+                # ---- Estadísticas por equipo ----
+                st.markdown("### Resumen xG")
+                _stat_rows = []
+                for _eq in _dr_teams:
+                    _s = _dr_shots[_dr_shots["equipo"] == _eq]
+                    _gls = int(_s["gol"].sum())
+                    _xg_tot = float(_s["xg"].sum())
+                    _n = len(_s)
+                    _stat_rows.append({
+                        "Equipo":       _eq,
+                        "Tiros":        _n,
+                        "Goles":        _gls,
+                        "xG total":     f"{_xg_tot:.2f}",
+                        "xG/tiro":      f"{_xg_tot/_n:.3f}" if _n else "—",
+                        "Goles vs xG":  f"+{_gls - _xg_tot:.2f}" if _gls >= _xg_tot else f"{_gls - _xg_tot:.2f}",
+                    })
+                st.dataframe(pd.DataFrame(_stat_rows), use_container_width=True, hide_index=True)
+
+                # ---- Tiro de mayor xG ----
+                _best = _dr_shots.loc[_dr_shots["xg"].idxmax()]
+                st.markdown(
+                    f"**Mejor ocasión:** {_best['jugador']} ({_best['equipo']}) — "
+                    f"xG **{_best['xg']:.3f}** · min {int(_best['minute'])}' · {_best['outcome_str']}"
+                )
+
+                # ---- Tabla de todos los tiros ----
+                with st.expander("Ver todos los tiros del partido"):
+                    _show = _dr_shots[["jugador","equipo","minute","xg","outcome_str"]].copy()
+                    _show.columns = ["Jugador","Equipo","Minuto","xG","Resultado"]
+                    _show = _show.sort_values("xG", ascending=False).reset_index(drop=True)
+                    _show["xG"] = _show["xG"].round(3)
+                    st.dataframe(_show, use_container_width=True, hide_index=True)
+
+
 with tab8:
     st.markdown(styles.section_head(
         kicker="07 · Glosario",
